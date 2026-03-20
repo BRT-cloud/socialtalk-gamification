@@ -1,3 +1,10 @@
+export interface UserInventory {
+  magnifier: number;
+  mirror: number;
+  hourglass: number;
+  advice: number;
+}
+
 export interface UserProfile {
   uid: string;
   displayName: string;
@@ -17,6 +24,7 @@ export interface UserProfile {
   unlockedStages: string[];
   clearedStages: string[];
   schoolpingCompleted: string[]; // 완료한 스쿨핑 미션 ID
+  inventory?: UserInventory; // 전략 상점 아이템
 }
 
 export interface Quest {

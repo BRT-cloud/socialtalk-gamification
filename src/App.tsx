@@ -8,7 +8,8 @@ import WorldMap from './components/WorldMap';
 import Chatbot from './components/Chatbot';
 import Dashboard from './components/Dashboard';
 import Schoolping from './components/Schoolping';
-import { Layout, Map as MapIcon, BarChart3, Users, LogOut, ShieldCheck, Sparkles } from 'lucide-react';
+import Store from './components/Store';
+import { Layout, Map as MapIcon, BarChart3, Users, LogOut, ShieldCheck, Sparkles, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSound } from './hooks/useSound';
 
@@ -18,7 +19,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'map' | 'chat' | 'dashboard' | 'schoolping'>('map');
+  const [view, setView] = useState<'map' | 'chat' | 'dashboard' | 'schoolping' | 'store'>('map');
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const { playSound } = useSound();
 
@@ -53,7 +54,8 @@ export default function App() {
             unlockedStages: ['stage-1'], // Start with stage 1 unlocked
             clearedStages: [],
             competenceIndex: 0,
-            schoolpingCompleted: []
+            schoolpingCompleted: [],
+            inventory: { magnifier: 0, mirror: 0, hourglass: 0, advice: 0 }
           };
           await setDoc(docRef, newProfile);
           setProfile(newProfile);
@@ -266,6 +268,7 @@ export default function App() {
           <NavBtn active={view === 'map'} onClick={() => handleNavClick('map')} icon={<MapIcon size={18}/>} label="월드 맵" />
           <NavBtn active={view === 'dashboard'} onClick={() => handleNavClick('dashboard')} icon={<BarChart3 size={18}/>} label="플레이어 통계" />
           <NavBtn active={view === 'schoolping'} onClick={() => handleNavClick('schoolping')} icon={<Users size={18}/>} label="길드 미션" />
+          <NavBtn active={view === 'store'} onClick={() => handleNavClick('store')} icon={<ShoppingCart size={18}/>} label="전략 상점" />
         </nav>
 
         <div className="flex items-center gap-4">
@@ -305,6 +308,11 @@ export default function App() {
               <Schoolping profile={profile} />
             </motion.div>
           )}
+          {view === 'store' && (
+            <motion.div key="store" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+              <Store profile={profile} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -313,6 +321,7 @@ export default function App() {
         <MobileNavBtn active={view === 'map'} onClick={() => handleNavClick('map')} icon={<MapIcon size={24}/>} />
         <MobileNavBtn active={view === 'dashboard'} onClick={() => handleNavClick('dashboard')} icon={<BarChart3 size={24}/>} />
         <MobileNavBtn active={view === 'schoolping'} onClick={() => handleNavClick('schoolping')} icon={<Users size={24}/>} />
+        <MobileNavBtn active={view === 'store'} onClick={() => handleNavClick('store')} icon={<ShoppingCart size={24}/>} />
       </nav>
     </div>
   );

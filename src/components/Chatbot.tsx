@@ -4,7 +4,7 @@ import { INITIAL_SCENARIOS } from '../constants';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Send, Sparkles, Award, Heart, Brain, CheckCircle2, XCircle, Info, Zap, Star, Sword, Terminal, Camera, BookOpen } from 'lucide-react';
+import { ArrowLeft, Send, Sparkles, Award, Heart, Brain, CheckCircle2, XCircle, Info, Zap, Star, Sword, Terminal, Camera, BookOpen, Search, Eye, Hourglass, Lightbulb } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useSound } from '../hooks/useSound';
 
@@ -33,6 +33,13 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
   const [showExplanation, setShowExplanation] = useState(false);
   const [showExpAnimation, setShowExpAnimation] = useState(false);
 
+  // Item states
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [disabledOptions, setDisabledOptions] = useState<string[]>([]);
+  const [showMirrorHint, setShowMirrorHint] = useState(false);
+  const [showAdviceHint, setShowAdviceHint] = useState(false);
+  const [activeItemAnimation, setActiveItemAnimation] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const { playSound } = useSound();
 
@@ -50,7 +57,26 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
     setSelectedOption(null);
     setShowExplanation(false);
     setShowExpAnimation(false);
+    setTimeLeft(60);
+    setDisabledOptions([]);
+    setShowMirrorHint(false);
+    setShowAdviceHint(false);
   }, [scenario?.id]);
+
+  useEffect(() => {
+    if (currentStep === 'quest' && !isAnswered && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else if (currentStep === 'quest' && timeLeft === 0 && !isAnswered) {
+      setIsAnswered(true);
+      setIsCorrect(false);
+      if (scenario && scenario.quests[currentQuestIndex]) {
+        saveAttempt(scenario.quests[currentQuestIndex], '시간 초과', false);
+      }
+    }
+  }, [currentStep, isAnswered, timeLeft, currentQuestIndex, scenario]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -100,6 +126,60 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
       setSelectedOption(null);
       setInput('');
       setShowExpAnimation(false);
+      setTimeLeft(60);
+      setDisabledOptions([]);
+      setShowMirrorHint(false);
+      setShowAdviceHint(false);
+    }
+  };
+
+  const handleUseItem = async (itemId: string) => {
+    if (!profile || !profile.inventory || (profile.inventory[itemId as keyof typeof profile.inventory] || 0) <= 0) return;
+    if (isAnswered) return;
+
+    try {
+      const userRef = doc(db, 'users', profile.uid);
+      await updateDoc(userRef, {
+        [`inventory.${itemId}`]: increment(-1)
+      });
+      
+      playSound('SUCCESS');
+      setActiveItemAnimation(itemId);
+      
+      // Item specific confetti
+      const colors = 
+        itemId === 'magnifier' ? ['#00F2FF', '#ffffff'] :
+        itemId === 'mirror' ? ['#7000FF', '#ffffff'] :
+        itemId === 'hourglass' ? ['#EAB308', '#ffffff'] :
+        ['#22C55E', '#ffffff'];
+        
+      confetti({
+        particleCount: 80,
+        spread: 100,
+        origin: { y: 0.5 },
+        colors: colors,
+        disableForReducedMotion: true
+      });
+      
+      if (itemId === 'magnifier') {
+        if (currentQuest.type === 'multiple-choice' && currentQuest.options) {
+          const wrongOptions = currentQuest.options.filter(o => o !== currentQuest.correctAnswer && !disabledOptions.includes(o));
+          if (wrongOptions.length > 0) {
+            const optionToRemove = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
+            setDisabledOptions(prev => [...prev, optionToRemove]);
+          }
+        }
+      } else if (itemId === 'mirror') {
+        setShowMirrorHint(true);
+      } else if (itemId === 'hourglass') {
+        setTimeLeft(prev => prev + 30);
+      } else if (itemId === 'advice') {
+        setShowAdviceHint(true);
+      }
+      
+      setTimeout(() => setActiveItemAnimation(null), 1500);
+    } catch (error) {
+      console.error("Failed to use item", error);
     }
   };
 
@@ -158,7 +238,7 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
   };
 
   const handleOptionSelect = async (option: string) => {
-    if (isAnswered) return;
+    if (isAnswered || disabledOptions.includes(option)) return;
     playSound('WHOOSH');
     setSelectedOption(option);
     const correct = option === currentQuest.correctAnswer;
@@ -313,24 +393,53 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
 
             {currentStep === 'quest' && currentQuest && (
               <motion.div key={`quest-${currentQuestIndex}`} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} className="space-y-8">
-                <div className="cyber-card p-10 hologram-border">
-                  <div className="flex items-center gap-3 text-cyber-blue mb-8">
-                    <div className="w-10 h-10 bg-cyber-blue/10 rounded-lg flex items-center justify-center border border-cyber-blue/30">
-                      <Brain size={24} />
+                <div className="cyber-card p-10 hologram-border relative overflow-hidden">
+                  {/* Item Animation Overlay */}
+                  <AnimatePresence>
+                    {activeItemAnimation && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.2, rotate: -45 }}
+                        animate={{ opacity: 1, scale: 1.2, rotate: 0 }}
+                        exit={{ opacity: 0, scale: 2, filter: 'blur(10px)' }}
+                        transition={{ type: 'spring', damping: 12, stiffness: 100 }}
+                        className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-black/60 backdrop-blur-md"
+                      >
+                        {activeItemAnimation === 'magnifier' && <Search size={160} className="text-cyber-blue drop-shadow-[0_0_50px_rgba(0,242,255,1)]" />}
+                        {activeItemAnimation === 'mirror' && <Eye size={160} className="text-cyber-purple drop-shadow-[0_0_50px_rgba(112,0,255,1)]" />}
+                        {activeItemAnimation === 'hourglass' && <Hourglass size={160} className="text-yellow-500 drop-shadow-[0_0_50px_rgba(234,179,8,1)]" />}
+                        {activeItemAnimation === 'advice' && <Lightbulb size={160} className="text-green-500 drop-shadow-[0_0_50px_rgba(34,197,94,1)]" />}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="flex items-center justify-between gap-3 text-cyber-blue mb-8">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-cyber-blue/10 rounded-lg flex items-center justify-center border border-cyber-blue/30">
+                        <Brain size={24} />
+                      </div>
+                      <span className="font-black uppercase tracking-widest text-sm">퀘스트 {currentQuestIndex + 1} / {scenario.quests.length}</span>
                     </div>
-                    <span className="font-black uppercase tracking-widest text-sm">퀘스트 {currentQuestIndex + 1} / {scenario.quests.length}</span>
+                    {!isAnswered && (
+                      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${timeLeft <= 10 ? 'bg-red-500/20 border-red-500 text-red-500 animate-pulse' : 'bg-cyber-blue/10 border-cyber-blue/30 text-cyber-blue'}`}>
+                        <Hourglass size={20} />
+                        <span className="font-bold text-lg">{timeLeft}초</span>
+                      </div>
+                    )}
                   </div>
                   <h3 className="text-3xl font-black text-white mb-10 leading-tight italic">{currentQuest.question}</h3>
                   
                   {/* Multiple Choice */}
                   {currentQuest.type === 'multiple-choice' && (
                     <div className="grid grid-cols-1 gap-4">
-                      {currentQuest.options?.map((option, i) => (
+                      {currentQuest.options?.map((option, i) => {
+                        const isDisabledByItem = disabledOptions.includes(option);
+                        return (
                         <button
                           key={i}
                           onClick={() => handleOptionSelect(option)}
-                          disabled={isAnswered}
+                          disabled={isAnswered || isDisabledByItem}
                           className={`w-full p-6 rounded-xl text-left font-bold text-lg transition-all border-2 flex items-center justify-between group ${
+                            isDisabledByItem ? 'opacity-30 cursor-not-allowed bg-black/40 border-white/5 text-slate-600' :
                             isAnswered && option === selectedOption
                               ? isCorrect 
                                 ? 'bg-cyber-blue/20 border-cyber-blue text-cyber-blue shadow-[0_0_15px_rgba(0,242,255,0.2)]' 
@@ -340,12 +449,12 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                                 : 'bg-white/5 border-white/10 hover:border-cyber-blue/50 text-slate-400'
                           }`}
                         >
-                          {option}
+                          <span className={isDisabledByItem ? 'line-through' : ''}>{option}</span>
                           {isAnswered && option === selectedOption && (
                             isCorrect ? <CheckCircle2 size={24} /> : <XCircle size={24} />
                           )}
                         </button>
-                      ))}
+                      )})}
                     </div>
                   )}
 
@@ -515,6 +624,92 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                           </div>
                         </motion.div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Hints */}
+                  {!isAnswered && (showMirrorHint || showAdviceHint) && (
+                    <div className="mt-6 space-y-4">
+                      {showMirrorHint && currentQuest.keywords && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-cyber-purple/10 border border-cyber-purple/30 rounded-xl flex items-start gap-3">
+                          <Eye className="text-cyber-purple shrink-0 mt-1" size={20} />
+                          <div>
+                            <p className="text-sm font-bold text-cyber-purple mb-1">거울의 힌트 (핵심 키워드)</p>
+                            <div className="flex flex-wrap gap-2">
+                              {currentQuest.keywords.map((kw, idx) => (
+                                <span key={idx} className="px-2 py-1 bg-cyber-purple/20 text-cyber-purple rounded-md text-sm font-bold">#{kw}</span>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                      {showAdviceHint && currentQuest.explanation && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl flex items-start gap-3">
+                          <Lightbulb className="text-green-500 shrink-0 mt-1" size={20} />
+                          <div>
+                            <p className="text-sm font-bold text-green-500 mb-1">조언의 힌트 (해설 일부)</p>
+                            <p className="text-sm text-green-400/80">{currentQuest.explanation.substring(0, Math.floor(currentQuest.explanation.length / 2))}...</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Item Bar */}
+                  {!isAnswered && profile?.inventory && (
+                    <div className="mt-8 p-4 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center gap-4">
+                      <button
+                        onClick={() => handleUseItem('magnifier')}
+                        disabled={!profile.inventory.magnifier || currentQuest.type !== 'multiple-choice'}
+                        className="relative p-3 bg-slate-800/50 hover:bg-cyber-blue/20 border border-white/10 hover:border-cyber-blue/50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
+                      >
+                        <Search className="text-cyber-blue" size={24} />
+                        <span className="absolute -top-2 -right-2 bg-cyber-blue text-black text-xs font-bold px-1.5 py-0.5 rounded-full">
+                          {profile.inventory.magnifier || 0}
+                        </span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs whitespace-nowrap rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          돋보기 (오답 1개 제거)
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => handleUseItem('mirror')}
+                        disabled={!profile.inventory.mirror}
+                        className="relative p-3 bg-slate-800/50 hover:bg-cyber-purple/20 border border-white/10 hover:border-cyber-purple/50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
+                      >
+                        <Eye className="text-cyber-purple" size={24} />
+                        <span className="absolute -top-2 -right-2 bg-cyber-purple text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                          {profile.inventory.mirror || 0}
+                        </span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs whitespace-nowrap rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          거울 (키워드 힌트)
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => handleUseItem('hourglass')}
+                        disabled={!profile.inventory.hourglass}
+                        className="relative p-3 bg-slate-800/50 hover:bg-yellow-500/20 border border-white/10 hover:border-yellow-500/50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
+                      >
+                        <Hourglass className="text-yellow-500" size={24} />
+                        <span className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs font-bold px-1.5 py-0.5 rounded-full">
+                          {profile.inventory.hourglass || 0}
+                        </span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs whitespace-nowrap rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          모래시계 (시간 +30초)
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => handleUseItem('advice')}
+                        disabled={!profile.inventory.advice}
+                        className="relative p-3 bg-slate-800/50 hover:bg-green-500/20 border border-white/10 hover:border-green-500/50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
+                      >
+                        <Lightbulb className="text-green-500" size={24} />
+                        <span className="absolute -top-2 -right-2 bg-green-500 text-black text-xs font-bold px-1.5 py-0.5 rounded-full">
+                          {profile.inventory.advice || 0}
+                        </span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs whitespace-nowrap rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          조언 (해설 힌트)
+                        </div>
+                      </button>
                     </div>
                   )}
 
