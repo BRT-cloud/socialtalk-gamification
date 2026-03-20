@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Radar as RadarComponent, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { motion } from 'motion/react';
-import { Award, TrendingUp, Users, BookOpen, Calendar, Brain, Zap, Shield, Heart, Star, Sparkles, Sword, Crown } from 'lucide-react';
+import { Award, TrendingUp, Users, BookOpen, Calendar, Brain, Zap, Shield, Heart, Star, Sparkles, Sword, Crown, CheckCircle2, XCircle } from 'lucide-react';
 
 interface DashboardProps {
   profile: UserProfile | null;
@@ -37,20 +36,6 @@ export default function Dashboard({ profile }: DashboardProps) {
     }
     fetchData();
   }, [profile]);
-
-  const radarData = [
-    { subject: '인지', A: profile?.stats.cognitive || 0, fullMark: 100 },
-    { subject: '정서', A: profile?.stats.emotional || 0, fullMark: 100 },
-    { subject: '행동', A: profile?.stats.behavioral || 0, fullMark: 100 },
-  ];
-
-  const lineChartData = recentAttempts.slice().reverse().map((attempt, index) => {
-    const avgScore = attempt.scores ? ((attempt.scores.wordAppropriateness || 0) + (attempt.scores.respect || 0) + (attempt.scores.nonVerbal || 0)) / 3 : (attempt.isCorrect ? 100 : 0);
-    return {
-      name: `Q${index + 1}`,
-      score: avgScore
-    };
-  });
 
   const getTitle = (level: number) => {
     if (level >= 20) return '전설의 현자';
@@ -135,65 +120,10 @@ export default function Dashboard({ profile }: DashboardProps) {
               </div>
             </div>
           </div>
-
-          <div className="glass-morphism rounded-[3.5rem] p-10 shadow-2xl border border-white/10">
-            <h3 className="font-black text-white mb-10 flex items-center gap-4 text-2xl tracking-tight">
-              <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-500">
-                <Zap size={24} />
-              </div>
-              능력치
-            </h3>
-            <div className="h-72 w-full mb-10">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                  <PolarGrid stroke="#ffffff20" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 14, fontWeight: 900 }} />
-                  <RadarComponent
-                    name="성취도"
-                    dataKey="A"
-                    stroke="#10b981"
-                    fill="#10b981"
-                    fillOpacity={0.6}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-6">
-              <AbilityBar label="인지" value={profile?.stats.cognitive || 0} color="bg-blue-500" icon={<Brain size={18} />} />
-              <AbilityBar label="정서" value={profile?.stats.emotional || 0} color="bg-rose-500" icon={<Heart size={18} />} />
-              <AbilityBar label="행동" value={profile?.stats.behavioral || 0} color="bg-amber-500" icon={<Shield size={18} />} />
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Quests & History */}
         <div className="lg:flex-1 space-y-10">
-          {/* Performance Chart */}
-          <div className="glass-morphism rounded-[3.5rem] p-10 shadow-2xl border border-white/10">
-            <div className="flex items-center justify-between mb-10">
-              <h3 className="font-black text-white flex items-center gap-4 text-2xl tracking-tight">
-                <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-500">
-                  <TrendingUp size={24} />
-                </div>
-                최근 수행도
-              </h3>
-            </div>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="name" stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} />
-                  <YAxis stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} domain={[0, 100]} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '1rem' }}
-                    itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
-                  />
-                  <Line type="monotone" dataKey="score" stroke="#10b981" strokeWidth={4} dot={{ r: 6, fill: '#10b981', stroke: '#0f172a', strokeWidth: 2 }} activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
           <div className="glass-morphism rounded-[3.5rem] p-10 shadow-2xl border border-white/10">
             <div className="flex items-center justify-between mb-10">
               <h3 className="font-black text-white flex items-center gap-4 text-2xl tracking-tight">
@@ -213,18 +143,31 @@ export default function Dashboard({ profile }: DashboardProps) {
                   <p className="text-slate-500 font-black text-lg">아직 수집한 배지가 없습니다. 모험을 시작하세요!</p>
                 </div>
               ) : (
-                profile?.badges.map((badge, i) => (
-                  <motion.div 
-                    key={i} 
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="w-24 h-24 bg-gradient-to-br from-amber-400/20 to-orange-400/20 rounded-[2rem] flex items-center justify-center border-4 border-white/10 shadow-xl text-amber-500 relative group"
-                  >
-                    <Award size={48} />
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white border-4 border-white shadow-lg scale-0 group-hover:scale-100 transition-transform">
-                      <Star size={14} fill="currentColor" />
-                    </div>
-                  </motion.div>
-                ))
+                profile?.badges.map((badge, i) => {
+                  const isCompetence = badge.startsWith('competence-stage-');
+                  const stageNum = isCompetence ? badge.split('-')[2] : '';
+                  
+                  return (
+                    <motion.div 
+                      key={i} 
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      className={`w-24 h-24 rounded-[2rem] flex flex-col items-center justify-center border-4 border-white/10 shadow-xl relative group ${
+                        isCompetence 
+                          ? 'bg-gradient-to-br from-cyber-blue/20 to-cyber-purple/20 text-cyber-blue' 
+                          : 'bg-gradient-to-br from-amber-400/20 to-orange-400/20 text-amber-500'
+                      }`}
+                      title={isCompetence ? `스테이지 ${stageNum} 유능감 배지` : badge}
+                    >
+                      <Award size={36} />
+                      {isCompetence && (
+                        <span className="text-[10px] font-black mt-1">STAGE {stageNum}</span>
+                      )}
+                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white border-4 border-white shadow-lg scale-0 group-hover:scale-100 transition-transform">
+                        <Star size={14} fill="currentColor" />
+                      </div>
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -263,7 +206,7 @@ export default function Dashboard({ profile }: DashboardProps) {
                     </div>
                     <div className="text-right">
                       <p className="text-4xl font-black text-emerald-500 leading-none tracking-tighter">
-                        {attempt.scores ? (((attempt.scores.wordAppropriateness || 0) + (attempt.scores.respect || 0) + (attempt.scores.nonVerbal || 0)) / 3).toFixed(0) : (attempt.isCorrect ? '100' : '0')}
+                        {attempt.scores ? (((attempt.scores.clarity || 0) + (attempt.scores.emotionalAuthenticity || 0) + (attempt.scores.skillApplication || 0)) / 3).toFixed(0) : (attempt.isCorrect ? '100' : '0')}
                       </p>
                       <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-2">점수</p>
                     </div>
@@ -326,30 +269,6 @@ export default function Dashboard({ profile }: DashboardProps) {
           </div>
         </motion.div>
       )}
-    </div>
-  );
-}
-
-function AbilityBar({ label, value, color, icon }: { label: string, value: number, color: string, icon: React.ReactNode }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${color} text-white shadow-lg`}>{icon}</div>
-          <span className="text-sm font-black text-slate-500 uppercase tracking-widest">{label}</span>
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-black text-slate-900 tracking-tighter">{value.toFixed(1)}</span>
-          <span className="text-[10px] font-black text-slate-400 uppercase">/ 100</span>
-        </div>
-      </div>
-      <div className="h-4 bg-slate-100 rounded-full overflow-hidden border-2 border-white shadow-inner">
-        <motion.div 
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          className={`h-full ${color} rounded-full shadow-lg`}
-        />
-      </div>
     </div>
   );
 }

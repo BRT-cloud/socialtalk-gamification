@@ -7,131 +7,225 @@ export const WORLDS = [
   { id: 'castle', name: '내면의 성', color: 'bg-purple-500', icon: 'Castle', desc: '갈등 해결, 거절하기, 자존감 회복 (국어: 설득하는 말하기, 비판적 사고)' },
 ] as const;
 
-const getForestTheme = (stage: number) => {
-  const themes = ['새 학기 인사', '친구의 책 관심 갖기', '모둠 활동 참여', '체육 시간 양보하기', '점심 시간 대화하기', '준비물 빌리기', '사과하기', '칭찬하기'];
-  return themes[(stage - 1) % themes.length];
-};
+const SCENARIO_TITLES = [
+  // 숲 (1~40)
+  "관심사 나누기", "먼저 인사하기", "칭찬 건네기", "급식실 규칙 준수", "운동장에서 끼워달라고 말하기",
+  "모둠 역할 정하기", "준비물 빌리기", "빌린 물건 돌려주기(사과)", "발표하는 친구 경청하기", "수업 시간 질문하기",
+  "짝꿍과 자리 정돈하기", "청소 구역 나누기", "교과서 같이 보기", "선생님께 심부름 가기", "교무실 예절 지키기",
+  "오해 풀기", "장난과 괴롭힘 구분하기", "내 의견 주장하기", "친구의 부탁 거절하기", "사과 수용하기",
+  "별명 부르지 않기", "비밀 지켜주기", "소외된 친구 챙기기", "다수결 결과 승복하기", "경쟁 게임 후 매너 지키기",
+  "동아리 홍보하기", "전학 온 친구 안내하기", "선생님께 질문하기", "복도에서 우측보행하기", "보건실 이용하기",
+  "도서관 정숙하기", "급식 잔반 줄이기 약속", "학교 기물 아껴 쓰기", "방송 수업 집중하기", "교문 앞 교통안전",
+  "학급 회의 참여", "건의함에 의견 넣기", "스승의 날 감사 전하기", "현장학습 팀 정하기", "졸업/종업식 인사",
+  // 바다 (41~60)
+  "부모님께 외출 허락 받기", "형제/남매와 간식 나누기", "집안일 돕기 제안", "밤늦게 조용히 하기", "부모님 고민 들어드리기",
+  "친척 어른께 전화하기", "식사 예절 지키기", "택배 기사님께 인사", "반려동물 책임지기", "가족 회의 제안",
+  "단톡방 첫인사", "단톡방 싸움 중재", "SNS 댓글 예절", "사이버 폭력 방지", "온라인 게임 매너",
+  "정보 검색 및 출처 밝히기", "개인정보 보호하기", "메일/메시지 정중히 쓰기", "스마트폰 사용 시간 조절", "디지털 격차 도와주기",
+  // 도시 (61~85)
+  "편의점 물건 사고 계산", "유통기한 지난 물건 환불", "버스 노선 묻기", "지하철 길 찾기", "키오스크 주문하기",
+  "도서관 회원증 만들기", "은행 번호표 뽑고 대기", "동사무소 서류 요청", "공원 쓰레기 줍기", "횡단보도 신호 지키기",
+  "식당에서 주문 오류 수정", "병원 진료 예약하기", "약국에서 증상 설명", "엘리베이터 양보하기", "이웃에게 층간소음 사과",
+  "분리수거 규칙 준수", "길 잃은 사람 도와주기", "공공장소 반려견 에티켓", "전시관 관람 예절", "영화관 좌석 찾기",
+  "카페에서 조용히 대화", "마트 시식 코너 예절", "전통시장 흥정해보기", "분실물 센터 신고", "지역 축제 참여하기",
+  // 성 (86~105)
+  "부당한 요구 단호히 거절", "실패 후 스스로 위로하기", "질투심 다스리기", "불안한 마음 표현하기", "화가 날 때 멈추기",
+  "자존감 높이는 혼잣말", "나의 장점 5가지 쓰기", "미래의 나에게 편지 쓰기", "스트레스 해소법 나누기", "진로 고민 털어놓기",
+  "다양성 존중하기", "소수 의견 경청하기", "비판적인 의견 정중히 말하기", "공동체 목표 설정", "용서하고 화해하기",
+  "봉사활동 신청하기", "타인의 슬픔 공감하기", "정의로운 행동 용기 내기", "평화로운 사회 만들기 캠페인", "최종 유능감 인증(마스터)"
+];
 
-const getSeaTheme = (stage: number) => {
-  const themes = ['부모님께 외출 허락 구하기', '단톡방 예절 지키기', '온라인 게임 매너', '가족과 식사 시간 대화', '형제자매와 물건 나누기', 'SNS 댓글 달기'];
-  return themes[(stage - 1) % themes.length];
-};
+interface StageData {
+  stage: number;
+  world: 'forest' | 'sea' | 'city' | 'castle';
+  title: string;
+  situation: string;
+  quests: Omit<Quest, 'id'>[];
+}
 
-const getCityTheme = (stage: number) => {
-  const themes = ['편의점 계산하기', '버스 노선 묻기', '우체국 이용하기', '도서관 대출하기', '길 잃었을 때 도움 요청하기', '식당에서 주문하기'];
-  return themes[(stage - 1) % themes.length];
-};
-
-const getCastleTheme = (stage: number) => {
-  const themes = ['무리한 부탁 거절하기', '오해로 인한 갈등 해결', '우울감과 힘듦 표현하기', '실패에 대처하기', '질투심 조절하기', '부당한 대우에 항의하기'];
-  return themes[(stage - 1) % themes.length];
-};
-
-const generateQuests = (stage: number, sector: string, theme: string, world: string): Quest[] => {
-  let q1Options = [];
-  let q1Answer = '';
-  
-  if (world === 'forest') {
-    q1Options = ['서로의 의도를 오해하여 소통이 단절된 상태', '상대방이 나를 무시하여 화가 난 상태', '대화 주제가 지루해서 흥미를 잃은 상태'];
-    q1Answer = '서로의 의도를 오해하여 소통이 단절된 상태';
-  } else if (world === 'sea') {
-    q1Options = ['비언어적 신호와 표면적 언어의 불일치로 인한 혼란', '온라인 연결 상태가 좋지 않아 생긴 오해', '서로의 관심사가 달라 대화가 끊긴 상태'];
-    q1Answer = '비언어적 신호와 표면적 언어의 불일치로 인한 혼란';
-  } else if (world === 'city') {
-    q1Options = ['바쁘고 혼잡한 환경 속에서 발생한 의사소통의 단절', '서로의 이익이 충돌하여 발생한 직접적인 다툼', '규칙을 몰라서 발생한 일방적인 실수'];
-    q1Answer = '바쁘고 혼잡한 환경 속에서 발생한 의사소통의 단절';
-  } else {
-    q1Options = ['친근함을 가장한 무리한 요구와 심리적 압박', '서로의 의견이 달라서 생긴 가벼운 말다툼', '단순한 피로감으로 인한 대화 거부'];
-    q1Answer = '친근함을 가장한 무리한 요구와 심리적 압박';
+const STAGE_DATA: StageData[] = [
+  {
+    stage: 1,
+    world: 'forest',
+    title: '관심사 나누기',
+    situation: '교실 창가에서 친구가 내가 좋아하는 판타지 소설을 읽고 있습니다. 친구는 책에 깊이 집중하고 있지만, 당신은 공통 관심사를 나누고 싶어 다가갑니다. 상대방의 독서를 방해하지 않으면서도 자연스럽게 말을 건네야 하는 상황입니다. 어떻게 다가가는 것이 가장 좋을까요?',
+    quests: [
+      {
+        type: 'multiple-choice',
+        question: '현재 친구가 책에 집중하고 있음을 알 수 있는 비언어적 신호는?',
+        options: ['고개를 숙이고 시선이 책에 고정됨', '창밖을 멍하니 바라봄', '주변을 두리번거림'],
+        correctAnswer: '고개를 숙이고 시선이 책에 고정됨',
+        explanation: '의사소통은 목적 달성뿐 아니라 사회적 욕구 충족의 기능을 합니다. 상대의 비언어적 신호(93%의 중요도)를 읽고 정서적 진실성을 담아 소통하세요.'
+      },
+      {
+        type: 'multiple-choice',
+        question: '대화를 시작하기 전 가장 먼저 고려해야 할 사항은?',
+        options: ['상대방이 대화할 준비가 되었는지 확인하기', '내가 하고 싶은 말부터 꺼내기', '무작정 책을 빼앗기'],
+        correctAnswer: '상대방이 대화할 준비가 되었는지 확인하기',
+        explanation: '의사소통은 목적 달성뿐 아니라 사회적 욕구 충족의 기능을 합니다. 상대의 비언어적 신호(93%의 중요도)를 읽고 정서적 진실성을 담아 소통하세요.'
+      },
+      {
+        type: 'short-answer',
+        question: '상대방의 기분을 존중하며 말을 거는 기술의 명칭은?',
+        correctAnswer: '정중한 요청',
+        explanation: '의사소통은 목적 달성뿐 아니라 사회적 욕구 충족의 기능을 합니다. 상대의 비언어적 신호(93%의 중요도)를 읽고 정서적 진실성을 담아 소통하세요.'
+      },
+      {
+        type: 'long-answer',
+        question: '친구에게 건넬 첫 마디를 적어보세요.',
+        correctAnswer: '안녕! 실례가 안 된다면 그 책 무슨 내용인지 물어봐도 될까? 나도 그 시리즈 정말 좋아하거든.',
+        explanation: '의사소통은 목적 달성뿐 아니라 사회적 욕구 충족의 기능을 합니다. 상대의 비언어적 신호(93%의 중요도)를 읽고 정서적 진실성을 담아 소통하세요.',
+        keywords: ['안녕', '실례가 안 된다면', '무슨 내용', '좋아하거든']
+      },
+      {
+        type: 'multiple-choice',
+        question: '만약 친구가 단답형으로 대답하고 다시 책을 본다면 적절한 대처는?',
+        options: ['"나중에 다 읽으면 이야기하자!"라고 말하며 물러나기', '계속해서 질문하며 귀찮게 하기', '화를 내며 자리로 돌아가기'],
+        correctAnswer: '"나중에 다 읽으면 이야기하자!"라고 말하며 물러나기',
+        explanation: '의사소통은 목적 달성뿐 아니라 사회적 욕구 충족의 기능을 합니다. 상대의 비언어적 신호(93%의 중요도)를 읽고 정서적 진실성을 담아 소통하세요.'
+      }
+    ]
+  },
+  {
+    stage: 4,
+    world: 'forest',
+    title: '급식실 규칙 준수',
+    situation: '배가 고픈 급식 시간, 맛있는 냄새를 따라 급식실에 도착했습니다. 그런데 친한 친구가 장난을 치며 슬쩍 당신의 앞에 끼어들려고 합니다. 뒤에 서 있는 다른 학생들은 불쾌한 표정으로 여러분을 바라보고 있습니다. 친구와의 우정도 소중하지만, 공동체의 규칙을 지키는 것도 중요한 순간입니다. 당신은 이 상황에서 친구의 기분을 상하지 않게 하면서도 규칙을 지키자고 어떻게 말해야 할까요?',
+    quests: [
+      {
+        type: 'multiple-choice',
+        question: '현재 상황에서 가장 먼저 고려해야 할 사회적 규칙은?',
+        options: ['새치기 하지 않고 줄 서기', '친구와 재미있게 장난치기', '맛있는 반찬 먼저 받기'],
+        correctAnswer: '새치기 하지 않고 줄 서기',
+        explanation: '공동체 생활에서는 개인의 욕구나 친분보다 모두가 합의한 규칙(줄 서기)을 우선적으로 지키는 것이 중요합니다.'
+      },
+      {
+        type: 'multiple-choice',
+        question: '뒤에 서 있는 학생들의 비언어적 신호(표정)는 무엇을 의미하나요?',
+        options: ['새치기에 대한 불만과 항의', '배가 고파서 지친 표정', '우리와 친해지고 싶어하는 표정'],
+        correctAnswer: '새치기에 대한 불만과 항의',
+        explanation: '불쾌한 표정은 규칙 위반에 대한 무언의 항의입니다. 주변의 비언어적 신호를 빠르게 캐치하는 것이 공감의 첫걸음입니다.'
+      },
+      {
+        type: 'short-answer',
+        question: '내 감정과 상황을 객관적으로 전달하여 갈등을 줄이는 화법은?',
+        correctAnswer: '나-전달법',
+        explanation: '상대를 비난하지 않고 "네가 ~하면, 나는 ~게 느껴져"라고 말하는 나-전달법은 친구의 기분을 상하지 않게 거절할 때 유용합니다.'
+      },
+      {
+        type: 'long-answer',
+        question: '친구에게 \'나-전달법\'을 사용하여 규칙 준수를 제안하는 문장을 쓰세요.',
+        correctAnswer: '네가 앞에 끼어들면 뒤에 있는 친구들이 불쾌해할 것 같아. 우리 뒤로 가서 같이 줄 서자.',
+        explanation: '상황(끼어들기)과 영향(다른 친구들의 불쾌함), 그리고 대안(뒤로 가서 줄 서기)을 명확하고 부드럽게 제시했습니다.',
+        keywords: ['뒤로', '줄 서자', '불쾌해할']
+      },
+      {
+        type: 'multiple-choice',
+        question: '규칙을 지켰을 때 얻을 수 있는 가장 큰 장점은?',
+        options: ['모두가 공평하고 기분 좋게 식사할 수 있음', '밥을 더 빨리 먹을 수 있음', '친구에게 칭찬받을 수 있음'],
+        correctAnswer: '모두가 공평하고 기분 좋게 식사할 수 있음',
+        explanation: '규칙은 공동체 구성원 모두의 권리를 보호하고 평화로운 환경을 유지하기 위해 존재합니다.'
+      }
+    ]
   }
+];
 
-  return [
-    {
-      id: `s${stage}-q1`,
-      type: 'multiple-choice',
-      question: `현재 상황에서 발생한 가장 핵심적인 문제나 갈등의 원인은 무엇인가요?`,
-      options: q1Options,
-      correctAnswer: q1Answer
-    },
-    {
-      id: `s${stage}-q2`,
-      type: 'long-answer',
-      question: `제시된 상황 설명을 바탕으로, 현재 상대방이 느끼고 있을 감정이나 입장을 추측하여 적어보세요.`,
-      aiEvaluation: true
-    },
-    {
-      id: `s${stage}-q3`,
-      type: 'multiple-choice',
-      question: `이 상황을 지혜롭게 해결하고 대화를 이어나가기 위해 당신이 가장 먼저 취해야 할 행동은 무엇일까요?`,
-      options: ['상대방의 감정을 존중하며 부드럽게 대화의 문 열기', '내 입장을 먼저 강하게 주장하여 기선 제압하기', '상황이 자연스럽게 해결될 때까지 침묵하며 기다리기'],
-      correctAnswer: '상대방의 감정을 존중하며 부드럽게 대화의 문 열기'
-    },
-    {
-      id: `s${stage}-q4`,
-      type: 'long-answer',
-      question: `'나-전달법(I-Message)'이나 공감적 듣기 등 배운 화법 기술을 활용하여, 상대방에게 실제로 건넬 첫 마디를 작성해보세요.`,
-      aiEvaluation: true
-    },
-    {
-      id: `s${stage}-q5`,
-      type: 'multiple-choice',
-      question: `당신이 적절한 화법으로 대화를 시도한 후, 예상되는 가장 긍정적인 결과나 다음으로 이어질 바람직한 대처 방법은 무엇인가요?`,
-      options: ['서로의 오해를 풀고 신뢰를 바탕으로 한 타협점 찾기', '상대방이 내 의견에 무조건적으로 동의하게 만들기', '더 이상의 대화 없이 각자의 행동에만 집중하기'],
-      correctAnswer: '서로의 오해를 풀고 신뢰를 바탕으로 한 타협점 찾기'
-    }
-  ];
-};
+// Generate the remaining stages (1 to 105)
+for (let i = 1; i <= 105; i++) {
+  // Skip manually defined stages
+  if (i === 1 || i === 4) continue;
+
+  let world: 'forest' | 'sea' | 'city' | 'castle' = 'forest';
+  if (i > 40 && i <= 60) world = 'sea';
+  else if (i > 60 && i <= 85) world = 'city';
+  else if (i > 85) world = 'castle';
+
+  const title = SCENARIO_TITLES[i - 1] || `스테이지 ${i}`;
+  
+  const places = {
+    forest: '학교의 어느 활기찬 공간',
+    sea: '가정이나 온라인의 일상적인 공간',
+    city: '지역사회의 공공장소',
+    castle: '내면의 감정을 마주하는 조용한 공간'
+  };
+
+  STAGE_DATA.push({
+    stage: i,
+    world,
+    title: title,
+    situation: `당신은 지금 ${places[world]}에 있습니다. 이번 목표는 '${title}'입니다. 주변에는 당신과 상호작용할 사람들이 있으며, 각자의 감정과 입장이 다릅니다. 이 상황에서 당신은 올바른 의사소통 방식을 선택하여 갈등을 예방하고 긍정적인 관계를 형성해야 합니다. 상대방의 기분을 존중하면서도 당신의 목적을 달성할 수 있는 최선의 방법을 고민해 보세요. 당신의 선택이 앞으로의 관계에 중요한 영향을 미칠 것입니다.`,
+    quests: [
+      {
+        type: 'multiple-choice',
+        question: `'${title}' 상황에서 가장 먼저 고려해야 할 핵심 요소는 무엇인가요?`,
+        options: ['상대방의 감정과 상황 존중하기', '내 목적만 빠르게 달성하기', '상황을 피하고 무시하기'],
+        correctAnswer: '상대방의 감정과 상황 존중하기',
+        explanation: '모든 의사소통의 기본은 상대방에 대한 존중과 공감입니다.'
+      },
+      {
+        type: 'multiple-choice',
+        question: `이 상황에서 관찰할 수 있는 중요한 비언어적 신호는 무엇일까요?`,
+        options: ['상대방의 표정과 시선, 자세', '주변의 날씨와 온도', '내가 입고 있는 옷차림'],
+        correctAnswer: '상대방의 표정과 시선, 자세',
+        explanation: '비언어적 신호는 상대방의 진짜 감정을 파악하는 데 매우 중요합니다.'
+      },
+      {
+        type: 'short-answer',
+        question: `갈등을 줄이고 내 마음을 잘 전달하기 위해 사용하는 화법(ㅇ-ㅈㄷㅂ)은 무엇인가요?`,
+        correctAnswer: '나-전달법',
+        explanation: '나-전달법(I-message)은 상대를 비난하지 않고 내 감정과 상황을 객관적으로 전달하는 훌륭한 대화 기술입니다.'
+      },
+      {
+        type: 'long-answer',
+        question: `'${title}' 상황을 해결하기 위해 상대방에게 건넬 첫 마디를 작성해 보세요.`,
+        correctAnswer: '상황에 맞는 부드럽고 명확한 요청이나 공감의 말',
+        explanation: '정중하고 솔직한 첫 마디는 긍정적인 대화의 문을 엽니다.',
+        keywords: ['안녕', '미안', '고마워', '부탁', '생각']
+      },
+      {
+        type: 'multiple-choice',
+        question: `이 상황을 성공적으로 마무리했을 때 얻을 수 있는 긍정적인 결과는?`,
+        options: ['서로에 대한 신뢰와 유대감 형성', '나 혼자만의 일시적인 만족', '상대방과의 관계 단절'],
+        correctAnswer: '서로에 대한 신뢰와 유대감 형성',
+        explanation: '올바른 소통은 장기적으로 건강하고 신뢰받는 관계를 만듭니다.'
+      }
+    ]
+  });
+}
+
+// Sort STAGE_DATA by stage number
+STAGE_DATA.sort((a, b) => a.stage - b.stage);
 
 const generateScenarios = (): Scenario[] => {
-  const scenarios: Scenario[] = [];
-  for (let i = 1; i <= 105; i++) {
-    let world: 'forest' | 'sea' | 'city' | 'castle' = 'forest';
-    let sectorName = '';
-    let situation = '';
-    let theme = '';
+  return STAGE_DATA.map(data => {
+    const isSchoolping = data.stage % 10 === 0;
+    
+    // Use thematic seeds based on the world
+    const seedPrefix = {
+      forest: 'school',
+      sea: 'home',
+      city: 'city',
+      castle: 'mind'
+    }[data.world];
+    
+    const imageUrl = `https://picsum.photos/seed/${seedPrefix}${data.stage}/800/600`;
 
-    if (i <= 40) {
-      world = 'forest';
-      sectorName = '우정의 숲';
-      theme = getForestTheme(i);
-      situation = `어둑한 교실 안, 창문 틈으로 들어오는 네온 빛이 친구의 굳은 얼굴을 비춥니다. 현재 상황은 '${theme}' 과업을 수행해야 하는 순간입니다. 친구는 팔짱을 낀 채 시선을 피하고 있으며, 방금 전 당신의 행동에 아무런 대답도 하지 않았습니다. 입술은 굳게 다물려 있지만, 떨리는 손끝에서 당황스러움과 경계심이 묻어납니다. "괜찮아"라고 짧게 내뱉은 말과 달리 온몸으로는 거부의 신호를 보내고 있습니다. 당신은 이 어색한 기류를 깨고, 친구의 진짜 감정을 파악하여 자연스럽게 대화를 이어가야 합니다.`;
-    } else if (i <= 60) {
-      world = 'sea';
-      sectorName = '공감의 바다';
-      theme = getSeaTheme(i);
-      situation = `푸른 홀로그램이 일렁이는 공간, 현재 '${theme}' 상황에 직면해 있습니다. 화면 너머 혹은 거실 소파에 앉은 상대방은 한숨을 크게 쉬며 고개를 젓고 있습니다. 당신이 말을 꺼내자 당황한 듯 말끝을 흐리며, "알아서 해"라는 의미심장한 말만 남깁니다. 텍스트나 표면적인 대답과 달리, 공간의 분위기는 차갑게 얼어붙었습니다. 당신은 이 미묘한 갈등 신호를 읽어내고, 관계를 회복하기 위한 적절한 반응을 보여야 합니다.`;
-    } else if (i <= 85) {
-      world = 'city';
-      sectorName = '자립의 도시';
-      theme = getCityTheme(i);
-      situation = `복잡한 사이버 도시의 한복판, 당신은 '${theme}' 과업을 완수해야 합니다. 당신의 차례가 왔을 때, 상대방(점원, 시민 등)은 피곤한 기색이 역력한 얼굴로 모니터나 스마트폰만 응시합니다. 기계적인 음성으로 대답하지만, 미간은 찌푸려져 있고 손가락은 초조하게 움직이고 있습니다. 뒤에 선 사람들의 웅성거리는 소리가 당신을 더욱 재촉하는 듯합니다. 당신은 이 혼잡한 환경 속에서 상대방의 비언어적 신호를 파악하고, 빠르고 예의 바르게 상황을 대처해야 합니다.`;
-    } else {
-      world = 'castle';
-      sectorName = '내면의 성';
-      theme = getCastleTheme(i);
-      situation = `보랏빛 안개가 자욱한 내면의 성곽, 당신은 '${theme}' 상황에 놓여 있습니다. 상대방은 웃는 얼굴로 당신에게 다가오지만, 어깨를 꽉 쥐는 손길이나 은근한 말투에서 강압적인 태도가 느껴집니다. 당신의 마음속에서는 불편함과 미안함이 충돌하며 혼란스러운 경고음이 울립니다. 친근한 언어 속에 숨겨진 통제나 갈등의 신호를 알아차려야 하는 순간입니다. 당신은 관계를 망치지 않으면서도 단호하게 자신의 감정을 표현하고 경계를 설정해야 합니다.`;
-    }
-
-    const isSchoolping = i % 10 === 0;
-    // Use the requested image_server URL format, with a fallback to picsum for actual rendering if needed.
-    // The prompt explicitly requested: https://image_server/stage_{id}.png
-    // We use picsum here so the UI doesn't look broken in the preview.
-    const imageUrl = `https://picsum.photos/seed/stage${i}/800/600`;
-
-    scenarios.push({
-      id: `stage-${i}`,
-      world,
-      stage: i,
+    return {
+      id: `stage-${data.stage}`,
+      world: data.world,
+      stage: data.stage,
       isBoss: isSchoolping,
       isSchoolping: isSchoolping,
-      title: `${theme} (스테이지 ${i})`,
-      situation,
+      title: data.title,
+      situation: data.situation,
       mediaUrl: imageUrl,
       difficulty: isSchoolping ? 'hard' : 'medium',
-      quests: generateQuests(i, sectorName, theme, world)
-    });
-  }
-  return scenarios;
+      quests: data.quests.map((q, idx) => ({
+        ...q,
+        id: `s${data.stage}-q${idx + 1}`
+      }))
+    };
+  });
 };
 
 export const INITIAL_SCENARIOS = generateScenarios();

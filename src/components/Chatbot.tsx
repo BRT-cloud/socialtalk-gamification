@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Scenario, UserProfile, Attempt, Quest } from '../types';
 import { INITIAL_SCENARIOS } from '../constants';
-import { getAIFeedback } from '../services/geminiService';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Send, Sparkles, Award, Heart, Brain, CheckCircle2, XCircle, Info, Zap, Star, Sword, Terminal, Camera } from 'lucide-react';
+import { ArrowLeft, Send, Sparkles, Award, Heart, Brain, CheckCircle2, XCircle, Info, Zap, Star, Sword, Terminal, Camera, BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useSound } from '../hooks/useSound';
 
@@ -23,7 +22,6 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
   const [currentQuestIndex, setCurrentQuestIndex] = useState(0);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<any>(null);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [showSchoolping, setShowSchoolping] = useState(false);
   const [showWorldClearOverlay, setShowWorldClearOverlay] = useState(false);
@@ -32,20 +30,37 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [aiFeedbackText, setAiFeedbackText] = useState<string | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [showExpAnimation, setShowExpAnimation] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const { playSound } = useSound();
 
   useEffect(() => {
+    // Reset state when scenario changes
+    setCurrentStep('visual');
+    setCurrentQuestIndex(0);
+    setInput('');
+    setLoading(false);
+    setShowSuccessOverlay(false);
+    setShowSchoolping(false);
+    setShowWorldClearOverlay(false);
+    setIsAnswered(false);
+    setIsCorrect(null);
+    setSelectedOption(null);
+    setShowExplanation(false);
+    setShowExpAnimation(false);
+  }, [scenario?.id]);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [currentQuestIndex, loading, aiFeedbackText]);
+  }, [currentQuestIndex, loading, showExplanation]);
 
   if (!scenario) return null;
 
-  const currentQuest = scenario.quests[currentQuestIndex];
+  const currentQuest = scenario.quests[currentQuestIndex] || scenario.quests[0];
   const isLastQuest = currentQuestIndex === scenario.quests.length - 1;
 
   const triggerSuccess = () => {
@@ -71,7 +86,7 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
       } else {
         setCurrentStep('result');
       }
-    }, 3000);
+    }, 5000);
   };
 
   const handleNextQuest = () => {
@@ -84,11 +99,11 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
       setIsCorrect(null);
       setSelectedOption(null);
       setInput('');
-      setAiFeedbackText(null);
+      setShowExpAnimation(false);
     }
   };
 
-  const saveAttempt = async (quest: Quest, userInput: string, correct: boolean, aiResult?: any) => {
+  const saveAttempt = async (quest: Quest, userInput: string, correct: boolean) => {
     try {
       const attemptData: Attempt = {
         uid: auth.currentUser?.uid || '',
@@ -96,28 +111,33 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
         questId: quest.id,
         userInput,
         isCorrect: correct,
-        aiFeedback: aiResult?.feedback || '',
-        scores: aiResult?.scores || { wordAppropriateness: 0, respect: 0, nonVerbal: 0 },
         timestamp: serverTimestamp()
       };
       await addDoc(collection(db, 'attempts'), attemptData);
 
       if (correct) {
+        setShowExpAnimation(true);
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.8 },
+          colors: ['#00F2FF', '#7000FF', '#ffffff']
+        });
+        setTimeout(() => setShowExpAnimation(false), 2000);
         const userRef = doc(db, 'users', auth.currentUser?.uid || '');
+        
+        const competenceEarned = quest.type === 'long-answer' ? 10 : 5;
+
         const updates: any = {
           exp: increment(10),
-          competenceIndex: increment(5),
+          competenceIndex: increment(competenceEarned),
           wisdom: increment(5)
         };
 
-        if (aiResult?.analysis) {
-          updates['stats.cognitive'] = increment((aiResult.analysis.cognitive || 0) / 10);
-          updates['stats.emotional'] = increment((aiResult.analysis.emotional || 0) / 10);
-          updates['stats.behavioral'] = increment((aiResult.analysis.behavioral || 0) / 10);
-        }
-
         if (isLastQuest) {
           updates.clearedStages = arrayUnion(scenario.id);
+          updates.badges = arrayUnion(`competence-${scenario.id}`);
+          
           const currentIndex = INITIAL_SCENARIOS.findIndex(s => s.id === scenario.id);
           const nextScenario = INITIAL_SCENARIOS[currentIndex + 1];
           if (nextScenario) {
@@ -160,38 +180,20 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
 
   const handleLongAnswerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || loading || isAnswered) return;
+    if (!input.trim() || isAnswered) return;
     playSound('WHOOSH');
-    setLoading(true);
+    setIsAnswered(true);
+    setShowExplanation(true);
+  };
 
-    try {
-      // AI 피드백 생략 요청에 따라 바로 통과 처리
-      const mockResult = {
-        isPassed: true,
-        feedback: '답변이 성공적으로 제출되었습니다. (AI 분석 생략)',
-        scores: {
-          wordAppropriateness: 100,
-          respect: 100,
-          nonVerbal: 100
-        },
-        analysis: {
-          cognitive: 10,
-          emotional: 10,
-          behavioral: 10
-        }
-      };
-      
-      setAiFeedbackText(mockResult.feedback);
-      setIsCorrect(mockResult.isPassed);
-      setIsAnswered(true);
-      setFeedback(mockResult);
-      await saveAttempt(currentQuest, input, mockResult.isPassed, mockResult);
-    } catch (error) {
-      console.error("Error:", error);
-      setAiFeedbackText('제출 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
+  const handleSelfEvaluation = async (isSimilar: boolean) => {
+    if (isSimilar) {
+      playSound('SUCCESS');
+    } else {
+      playSound('WHOOSH');
     }
+    setIsCorrect(isSimilar);
+    await saveAttempt(currentQuest, input, isSimilar);
   };
 
   const handleSchoolpingComplete = async () => {
@@ -381,14 +383,14 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                     </form>
                   )}
 
-                  {/* Long Answer (AI Evaluation) */}
+                  {/* Long Answer (Self Evaluation) */}
                   {currentQuest.type === 'long-answer' && (
                     <div className="space-y-6">
                       <div className="bg-cyber-purple/10 p-6 rounded-2xl border border-cyber-purple/30 flex gap-4 items-center">
                         <div className="w-10 h-10 bg-black/40 rounded-lg flex items-center justify-center text-cyber-purple border border-cyber-purple/30 shadow-[0_0_10px_rgba(112,0,255,0.2)]">
                           <Info size={20} />
                         </div>
-                        <p className="text-sm font-bold text-cyber-purple">AI가 당신의 답변을 분석하여 피드백을 제공합니다. 상황에 맞게 자유롭게 작성해보세요.</p>
+                        <p className="text-sm font-bold text-cyber-purple">상황에 맞게 자유롭게 작성해보세요. 제출 후 모범 답안과 비교할 수 있습니다.</p>
                       </div>
 
                       <form onSubmit={handleLongAnswerSubmit} className="relative group">
@@ -396,7 +398,7 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                         <textarea
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
-                          disabled={isAnswered || loading}
+                          disabled={isAnswered}
                           placeholder="여기에 답변을 작성하세요..."
                           rows={4}
                           className="relative w-full p-6 rounded-xl bg-black/60 border-2 border-white/10 focus:border-cyber-blue transition-all outline-none shadow-xl text-lg font-medium text-white disabled:opacity-50 resize-none"
@@ -405,22 +407,112 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                           <div className="flex justify-end mt-4 relative z-10">
                             <button
                               type="submit"
-                              disabled={!input.trim() || loading}
+                              disabled={!input.trim()}
                               className="px-8 py-4 bg-cyber-blue text-black rounded-xl font-black uppercase tracking-widest flex items-center gap-2 hover:bg-white disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed transition-all active:scale-90 shadow-[0_0_15px_rgba(0,242,255,0.4)]"
                             >
-                              {loading ? <span className="animate-pulse">분석 중...</span> : <><Send size={20} /> 제출하기</>}
+                              <Send size={20} /> 제출하기
                             </button>
                           </div>
                         )}
                       </form>
 
-                      {aiFeedbackText && (
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`p-6 rounded-2xl border backdrop-blur-md ${isCorrect ? 'bg-cyber-blue/20 border-cyber-blue text-white shadow-[0_0_15px_rgba(0,242,255,0.2)]' : 'bg-cyber-purple/20 border-cyber-purple text-white shadow-[0_0_15px_rgba(112,0,255,0.2)]'}`}>
-                          <div className="flex items-center gap-3 mb-4">
-                            {isCorrect ? <CheckCircle2 className="text-cyber-blue" size={24} /> : <Brain className="text-cyber-purple" size={24} />}
-                            <h4 className="font-black text-xl italic">{isCorrect ? '훌륭합니다!' : 'AI 피드백'}</h4>
+                      {showExplanation && (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+                          animate={{ opacity: 1, scale: 1, y: 0 }} 
+                          transition={{ type: 'spring', damping: 15 }}
+                          className="relative mt-8 p-[2px] rounded-2xl overflow-hidden group"
+                        >
+                          {/* Animated Hologram Border */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-cyber-blue via-cyber-purple to-cyber-blue opacity-50 blur-sm group-hover:opacity-100 transition-opacity duration-500 animate-pulse" />
+                          <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,#00F2FF_50%,transparent_100%)] translate-x-[-100%] animate-[shimmer_2s_infinite]" />
+                          
+                          <div className="relative bg-black/80 backdrop-blur-xl p-8 rounded-2xl border border-white/10 h-full">
+                            {/* Scanline Effect */}
+                            <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20" />
+                            
+                            <div className="flex flex-col gap-6 relative z-10">
+                              <div className="flex items-center gap-3 mb-2">
+                                <BookOpen className="text-cyber-blue" size={28} />
+                                <h4 className="font-black text-2xl italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                  퀘스트 해설지
+                                </h4>
+                              </div>
+                              
+                              <div className="space-y-6">
+                                <div className="bg-slate-900/50 p-6 rounded-xl border border-white/5">
+                                  <h5 className="text-cyber-blue font-bold mb-2 flex items-center gap-2">
+                                    <Star size={16} /> 모범 답안
+                                  </h5>
+                                  <p className="text-lg text-white leading-relaxed">
+                                    {currentQuest.correctAnswer}
+                                  </p>
+                                </div>
+
+                                <div className="bg-slate-900/50 p-6 rounded-xl border border-white/5">
+                                  <h5 className="text-cyber-purple font-bold mb-2 flex items-center gap-2">
+                                    <Brain size={16} /> 국어적/사회적 해설
+                                  </h5>
+                                  <p className="text-lg text-slate-300 leading-relaxed">
+                                    {currentQuest.explanation}
+                                  </p>
+                                </div>
+
+                                {currentQuest.keywords && (
+                                  <div className="flex flex-wrap gap-2">
+                                    <span className="text-sm font-bold text-slate-500 mr-2 flex items-center">핵심 키워드:</span>
+                                    {currentQuest.keywords.map((kw, idx) => (
+                                      <span key={idx} className="px-3 py-1 bg-cyber-blue/10 text-cyber-blue rounded-full text-sm font-bold border border-cyber-blue/30">
+                                        #{kw}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {isCorrect === null && (
+                                <div className="mt-8 pt-6 border-t border-white/10 flex flex-col items-center gap-4">
+                                  <p className="text-slate-400 font-medium text-center">
+                                    자신의 답변과 모범 답안을 비교해보세요.<br/>핵심 의미가 통한다면 정답으로 인정됩니다.
+                                  </p>
+                                  <div className="flex gap-4 w-full sm:w-auto">
+                                    <button
+                                      onClick={() => handleSelfEvaluation(true)}
+                                      className="flex-1 sm:flex-none px-6 py-3 bg-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue hover:text-black border border-cyber-blue/50 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                      <CheckCircle2 size={20} /> 내 답안이 모범 답안과 비슷합니다
+                                    </button>
+                                    <button
+                                      onClick={() => handleSelfEvaluation(false)}
+                                      className="flex-1 sm:flex-none px-6 py-3 bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-600 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                      <XCircle size={20} /> 다시 생각해볼게요
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {isCorrect !== null && (
+                                <motion.div 
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className={`mt-4 p-4 rounded-xl border flex items-center justify-center gap-3 ${isCorrect ? 'bg-cyber-blue/10 border-cyber-blue/30 text-cyber-blue' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}
+                                >
+                                  {isCorrect ? (
+                                    <>
+                                      <Award size={24} />
+                                      <span className="font-bold text-lg">훌륭합니다! 유능감(Competence) +10 획득!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Info size={24} />
+                                      <span className="font-bold text-lg">다음에는 더 잘할 수 있을 거예요!</span>
+                                    </>
+                                  )}
+                                </motion.div>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-lg leading-relaxed">{aiFeedbackText}</p>
                         </motion.div>
                       )}
                     </div>
@@ -440,7 +532,7 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                   {isAnswered && !isCorrect && currentQuest.type === 'long-answer' && (
                      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
                      <button 
-                       onClick={() => { setIsAnswered(false); setAiFeedbackText(null); }}
+                       onClick={() => { setIsAnswered(false); }}
                        className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/20 rounded-xl text-lg font-bold transition-all"
                      >
                        다시 시도하기
@@ -469,14 +561,6 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                   
                   <h2 className="text-5xl font-black text-white mb-4 tracking-tighter italic neon-text-blue">퀘스트 클리어!</h2>
                   <p className="text-slate-400 text-lg mb-12 font-medium">모든 전술적 통신 목표를 달성했습니다.</p>
-                  
-                  {feedback?.scores && (
-                    <div className="grid grid-cols-3 gap-6 mb-12">
-                      <ResultStatCard label="적절성" value={feedback.scores.wordAppropriateness || 0} icon={<Zap size={16} />} color="blue" />
-                      <ResultStatCard label="존중" value={feedback.scores.respect || 0} icon={<Heart size={16} />} color="purple" />
-                      <ResultStatCard label="조화" value={feedback.scores.nonVerbal || 0} icon={<Sparkles size={16} />} color="blue" />
-                    </div>
-                  )}
 
                   <div className="space-y-4">
                     <div className="bg-white/5 p-6 rounded-2xl border border-white/10 flex items-center justify-between mb-4">
@@ -571,15 +655,31 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
               transition={{ type: 'spring', damping: 12 }}
               className="text-center"
             >
-              <div className="w-32 h-32 bg-cyber-blue rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_50px_#00F2FF]">
-                <Award size={64} className="text-black" />
-              </div>
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-40 h-40 bg-gradient-to-tr from-cyber-blue via-cyber-purple to-cyber-pink rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_80px_#00F2FF] p-1"
+              >
+                <div className="w-full h-full bg-black rounded-full flex items-center justify-center border-4 border-cyber-blue">
+                  <Award size={80} className="text-cyber-blue" />
+                </div>
+              </motion.div>
               <h1 className="text-6xl font-black text-white mb-4 tracking-tighter italic neon-text-blue">
-                미션 성공!
+                STAGE CLEAR!
               </h1>
-              <p className="text-2xl text-cyber-blue font-bold uppercase tracking-widest">
-                유능감을 획득했습니다
-              </p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-white/10 border border-cyber-blue/50 px-8 py-4 rounded-3xl backdrop-blur-md inline-block max-w-md"
+              >
+                <p className="text-3xl text-cyber-blue font-black uppercase tracking-widest mb-2">
+                  🏆 유능감 배지 획득!
+                </p>
+                <p className="text-sm text-slate-300 font-medium">
+                  에릭슨의 심리사회적 발달 이론에 따라, 당신은 이번 스테이지를 통해 또래와 협동하며 성취감을 느끼고 '유능감(Competence)'을 획득했습니다.
+                </p>
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
@@ -626,6 +726,37 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showExpAnimation && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.5, y: -50 }}
+            transition={{ type: 'spring', damping: 12, duration: 0.5 }}
+            className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center"
+          >
+            <div className="relative flex flex-col items-center">
+              <div className="absolute inset-0 bg-cyber-blue blur-[100px] opacity-30 rounded-full" />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+                className="absolute w-64 h-64 border-4 border-dashed border-cyber-blue/50 rounded-full"
+              />
+              <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
+                className="absolute w-48 h-48 border-4 border-dotted border-cyber-purple/50 rounded-full"
+              />
+              <div className="relative z-10 bg-black/80 backdrop-blur-xl border-2 border-cyber-blue p-8 rounded-3xl shadow-[0_0_50px_rgba(0,242,255,0.5)] text-center">
+                <Sparkles className="text-cyber-blue w-16 h-16 mx-auto mb-4 animate-pulse" />
+                <h2 className="text-5xl font-black text-white italic tracking-tighter mb-2 neon-text-blue">정답!</h2>
+                <p className="text-3xl font-black text-cyber-blue">+10 EXP 획득!</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;
@@ -635,30 +766,6 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
           scrollbar-width: none;
         }
       `}</style>
-    </div>
-  );
-}
-
-interface ResultStatCardProps {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: 'blue' | 'purple';
-}
-
-function ResultStatCard({ label, value, icon, color }: ResultStatCardProps) {
-  const colors = {
-    blue: 'bg-cyber-blue/10 text-cyber-blue border-cyber-blue/30',
-    purple: 'bg-cyber-purple/10 text-cyber-purple border-cyber-purple/30'
-  };
-
-  return (
-    <div className={`p-5 rounded-xl border-2 ${colors[color]}`}>
-      <div className="flex items-center justify-center gap-1.5 mb-2 opacity-60">
-        {icon}
-        <p className="text-[10px] font-black uppercase tracking-widest">{label}</p>
-      </div>
-      <p className="text-3xl font-black tracking-tighter">{value}</p>
     </div>
   );
 }

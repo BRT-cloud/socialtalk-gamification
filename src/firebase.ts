@@ -11,6 +11,19 @@ export const googleProvider = new GoogleAuthProvider();
 export const signIn = () => signInWithPopup(auth, googleProvider);
 export const logOut = () => signOut(auth);
 
+export const refreshAuthToken = async (): Promise<boolean> => {
+  if (auth.currentUser) {
+    try {
+      await auth.currentUser.getIdToken(true);
+      return true;
+    } catch (error) {
+      console.error("Failed to refresh auth token:", error);
+      return false;
+    }
+  }
+  return false;
+};
+
 // Connection test
 async function testConnection() {
   try {

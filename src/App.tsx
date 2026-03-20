@@ -157,8 +157,12 @@ export default function App() {
                 } catch (error: any) {
                   console.error('Sign in error:', error);
                   setIsSigningIn(false);
-                  if (error.code !== 'auth/cancelled-popup-request' && error.code !== 'auth/popup-closed-by-user') {
-                    alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
+                  if (error.code === 'auth/unauthorized-domain') {
+                    alert('현재 도메인이 Firebase Auth에 등록되지 않았습니다. Firebase 콘솔에서 도메인을 추가해주세요.');
+                  } else if (error.code === 'auth/invalid-action-code') {
+                    alert('인증 코드가 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.');
+                  } else if (error.code !== 'auth/cancelled-popup-request' && error.code !== 'auth/popup-closed-by-user') {
+                    alert(`로그인 중 오류가 발생했습니다: ${error.message || '다시 시도해주세요.'}`);
                   }
                 }
               }}
@@ -287,7 +291,7 @@ export default function App() {
             </motion.div>
           )}
           {view === 'chat' && (
-            <motion.div key={`chat-${selectedScenario?.id}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
               <Chatbot scenario={selectedScenario} onBack={() => handleNavClick('map')} onNextStage={handleNextStage} profile={profile} />
             </motion.div>
           )}

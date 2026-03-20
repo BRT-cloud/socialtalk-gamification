@@ -24,8 +24,9 @@ export interface Quest {
   type: 'multiple-choice' | 'short-answer' | 'long-answer';
   question: string;
   options?: string[]; // For multiple-choice
-  correctAnswer?: string; // For multiple-choice and short-answer
-  aiEvaluation?: boolean; // For long-answer
+  correctAnswer: string; // Model answer for long-answer, exact answer for others
+  explanation?: string; // Explanation for the answer
+  keywords?: string[]; // Keywords for long-answer self-evaluation
 }
 
 export interface Scenario {
@@ -48,12 +49,6 @@ export interface Attempt {
   questId: string;
   userInput: string;
   isCorrect: boolean;
-  aiFeedback?: string;
-  scores?: {
-    wordAppropriateness: number;
-    respect: number;
-    nonVerbal: number;
-  };
   timestamp: any;
 }
 
