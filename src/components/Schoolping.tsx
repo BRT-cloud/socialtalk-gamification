@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, SchoolpingMission } from '../types';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Users, CheckCircle2, MessageSquare, Image as ImageIcon, Sparkles, Tent, Moon, Star, X, Upload } from 'lucide-react';
@@ -92,7 +92,7 @@ export default function Schoolping({ profile }: SchoolpingProps) {
       const missionRef = doc(db, 'schoolping', selectedMissionId);
       await updateDoc(missionRef, {
         submissions: arrayUnion({
-          uid: auth.currentUser?.uid,
+          uid: profile?.uid,
           userName: profile?.displayName || '익명',
           imageUrl: imageUrl,
           text: submissionText.trim(),
@@ -101,8 +101,8 @@ export default function Schoolping({ profile }: SchoolpingProps) {
       });
 
       // Update user profile
-      if (auth.currentUser) {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
+      if (profile?.uid) {
+        const userRef = doc(db, 'users', profile.uid);
         await updateDoc(userRef, {
           schoolpingCompleted: arrayUnion(selectedMissionId)
         });

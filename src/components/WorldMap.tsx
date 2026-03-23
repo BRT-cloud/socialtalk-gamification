@@ -80,39 +80,41 @@ export default function WorldMap({ onSelectScenario, profile }: WorldMapProps) {
                 <img 
                   src={WORLD_IMAGES[world.id]} 
                   alt={world.name}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-25"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
                 
                 <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-3 h-3 rounded-full ${isCleared ? 'bg-cyber-blue shadow-[0_0_10px_#00F2FF]' : 'bg-slate-500'}`} />
-                    <span className="text-xs font-bold uppercase tracking-widest text-cyber-blue">
-                      {isCleared ? '안전 구역' : '미개척 지역'}
-                    </span>
-                  </div>
-                  <h3 className="text-5xl font-black text-white tracking-tighter mb-4 neon-text-blue uppercase italic">
-                    {world.name}
-                  </h3>
-                  <p className="text-slate-300 text-sm leading-relaxed mb-6 line-clamp-2">
-                    {world.desc}
-                  </p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex -space-x-2">
-                      {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-cyber-purple/30 backdrop-blur-sm flex items-center justify-center text-[10px] font-bold">
-                          {i}
-                        </div>
-                      ))}
-                      <div className="w-8 h-8 rounded-full border-2 border-black bg-black/50 backdrop-blur-sm flex items-center justify-center text-[10px] font-bold text-slate-400">
-                        +12
-                      </div>
+                  <div className="bg-black/70 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-2xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${isCleared ? 'bg-cyber-blue shadow-[0_0_10px_#00F2FF]' : 'bg-slate-500'}`} />
+                      <span className="text-xs font-bold uppercase tracking-widest text-cyber-blue">
+                        {isCleared ? '안전 구역' : '미개척 지역'}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 text-cyber-blue font-bold text-sm">
-                      <span>스테이지 보기</span>
-                      <ChevronRight size={16} />
+                    <h3 className="text-5xl font-black text-white tracking-tighter mb-4 neon-text-blue uppercase italic drop-shadow-[0_0_10px_rgba(0,242,255,0.5)]">
+                      {world.name}
+                    </h3>
+                    <p className="text-slate-200 text-sm leading-relaxed mb-6 line-clamp-2 font-medium">
+                      {world.desc}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex -space-x-2">
+                        {[1, 2, 3, 4].map(i => (
+                          <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-cyber-purple/30 backdrop-blur-sm flex items-center justify-center text-[10px] font-bold">
+                            {i}
+                          </div>
+                        ))}
+                        <div className="w-8 h-8 rounded-full border-2 border-black bg-black/50 backdrop-blur-sm flex items-center justify-center text-[10px] font-bold text-slate-400">
+                          +12
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-cyber-blue font-bold text-sm">
+                        <span>스테이지 보기</span>
+                        <ChevronRight size={16} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -132,30 +134,47 @@ export default function WorldMap({ onSelectScenario, profile }: WorldMapProps) {
                       whileHover={unlocked ? { scale: 1.05, y: -2 } : {}}
                       whileTap={unlocked ? { scale: 0.95 } : {}}
                       onClick={() => unlocked && handleScenarioClick(scenario)}
-                      className={`relative flex-shrink-0 w-32 h-full rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
+                      className={`relative flex-shrink-0 w-32 h-full rounded-xl border overflow-hidden transition-all ${
                         unlocked 
                           ? isCleared
-                            ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                            ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
                             : scenario.isBoss 
-                              ? 'bg-cyber-purple/20 border-cyber-purple text-white shadow-[0_0_15px_rgba(112,0,255,0.3)]'
-                              : 'bg-cyber-blue/5 border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10'
-                          : 'bg-black/40 border-white/5 text-slate-600 opacity-50 grayscale'
+                              ? 'border-cyber-purple shadow-[0_0_15px_rgba(112,0,255,0.3)]'
+                              : 'border-cyber-blue/30 hover:border-cyber-blue/60 shadow-[0_0_15px_rgba(0,242,255,0.1)]'
+                          : 'border-white/5 opacity-50 grayscale'
                       }`}
                     >
-                      {isCleared && (
-                        <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_10px_#10b981]">
-                          <CheckCircle2 size={12} className="text-black" />
+                      {/* Stage Image Background */}
+                      <div className="absolute inset-0 z-0">
+                        <img 
+                          src={scenario.mediaUrl} 
+                          alt={scenario.title}
+                          className="w-full h-full object-cover opacity-20 group-hover:opacity-40 transition-opacity"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className={`absolute inset-0 bg-gradient-to-t ${
+                          isCleared ? 'from-emerald-900/90' : scenario.isBoss ? 'from-cyber-purple/90' : 'from-black/90'
+                        } to-transparent`} />
+                      </div>
+
+                      <div className="relative z-10 flex flex-col items-center justify-center gap-1 h-full p-2 bg-black/70 backdrop-blur-[4px]">
+                        {isCleared && (
+                          <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_15px_#10b981] z-20">
+                            <CheckCircle2 size={12} className="text-black" />
+                          </div>
+                        )}
+                        <div className="flex items-center justify-center mb-1">
+                          {unlocked ? (
+                            scenario.isBoss ? <Sword size={22} className={isCleared ? 'text-emerald-400' : 'text-cyber-purple drop-shadow-[0_0_10px_rgba(112,0,255,0.8)]'} /> : <Sparkles size={20} className={isCleared ? 'text-emerald-400' : 'text-cyber-blue drop-shadow-[0_0_10px_rgba(0,242,255,0.8)]'} />
+                          ) : (
+                            <Lock size={20} className="text-slate-500" />
+                          )}
                         </div>
-                      )}
-                      {unlocked ? (
-                        scenario.isBoss ? <Sword size={24} className={isCleared ? 'text-emerald-400' : 'text-cyber-purple'} /> : <Sparkles size={20} className={isCleared ? 'text-emerald-400' : ''} />
-                      ) : (
-                        <Lock size={20} />
-                      )}
-                      <span className="text-2xl font-black tracking-tighter">{scenario.stage}</span>
-                      <span className="text-[8px] font-bold uppercase tracking-widest truncate w-full px-2">
-                        {scenario.title}
-                      </span>
+                        <span className="text-3xl font-black tracking-tighter text-white leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{scenario.stage}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-1 text-center text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                          {scenario.title}
+                        </span>
+                      </div>
                     </motion.button>
                   );
                 })}

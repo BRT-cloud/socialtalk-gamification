@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Scenario, UserProfile, Attempt, Quest } from '../types';
 import { INITIAL_SCENARIOS } from '../constants';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Send, Sparkles, Award, Heart, Brain, CheckCircle2, XCircle, Info, Zap, Star, Sword, Terminal, Camera, BookOpen, Search, Eye, Hourglass, Lightbulb } from 'lucide-react';
@@ -186,7 +186,7 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
   const saveAttempt = async (quest: Quest, userInput: string, correct: boolean) => {
     try {
       const attemptData: Attempt = {
-        uid: auth.currentUser?.uid || '',
+        uid: profile?.uid || '',
         scenarioId: scenario.id,
         questId: quest.id,
         userInput,
@@ -204,7 +204,7 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
           colors: ['#00F2FF', '#7000FF', '#ffffff']
         });
         setTimeout(() => setShowExpAnimation(false), 2000);
-        const userRef = doc(db, 'users', auth.currentUser?.uid || '');
+        const userRef = doc(db, 'users', profile?.uid || '');
         
         const competenceEarned = quest.type === 'long-answer' ? 10 : 5;
 
@@ -278,8 +278,8 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
 
   const handleSchoolpingComplete = async () => {
     try {
-      if (auth.currentUser) {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
+      if (profile?.uid) {
+        const userRef = doc(db, 'users', profile.uid);
         await updateDoc(userRef, {
           schoolpingCompleted: arrayUnion(scenario.id)
         });
@@ -355,8 +355,8 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
                 <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl mb-8">
                   {/* Background Image */}
                   <div className="absolute inset-0 z-0">
-                    <img src={scenario.mediaUrl} alt="상황 일러스트" className="w-full h-full object-cover opacity-30" referrerPolicy="no-referrer" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black" />
+                    <img src={scenario.mediaUrl} alt="상황 일러스트" className="w-full h-full object-cover opacity-60" referrerPolicy="no-referrer" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black" />
                   </div>
 
                   {/* Content */}

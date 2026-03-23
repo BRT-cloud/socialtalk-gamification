@@ -2,122 +2,58 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Assumed Data Model
+    // Assumed Data Model (Nickname-based Login)
     // ===============================================================
     //
     // Collection: users
-    // Document ID: {uid}
+    // Document ID: {nickname}
     // Fields:
-    //   - uid: string (required)
-    //   - displayName: string
-    //   - email: string
-    //   - exp: number (required)
-    //   - level: number (required)
-    //   - badges: list (strings)
-    //   - stats: map (cognitive, emotional, behavioral)
-    //
-    // Collection: scenarios
-    // Document ID: {scenarioId}
-    // Fields:
-    //   - id: string (required)
-    //   - world: string (forest, sea, city, castle)
-    //   - stage: number
-    //   - isBoss: bool
-    //   - title: string
-    //   - situation: string
-    //   - mediaUrl: string
-    //   - difficulty: string
-    //
-    // Collection: attempts
-    // Document ID: auto-generated
-    // Fields:
-    //   - uid: string (required)
-    //   - scenarioId: string (required)
-    //   - userInput: string (required)
-    //   - aiFeedback: string
-    //   - scores: map (clarity, sincerity)
-    //   - timestamp: timestamp
-    //
-    // Collection: schoolping
-    // Document ID: {missionId}
-    // Fields:
-    //   - id: string
-    //   - title: string
-    //   - description: string
-    //   - submissions: list of maps (uid, userName, imageUrl, timestamp)
+    //   - uid: string (nickname)
+    //   - displayName: string (nickname)
+    //   - exp: number
+    //   - level: number
+    //   - wisdom: number
+    //   - badges: list
+    //   - role: 'student' | 'admin'
     //
     // ===============================================================
 
-    // ===============================================================
     // Helper Functions
-    // ===============================================================
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isAuthenticated() &&
-        ((request.auth.token.email == "reuben119@gmail.com" && request.auth.token.email_verified == true) ||
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    function isAdmin(nickname) {
+      return nickname == 'admin' || nickname == 'GM' || 
+             (exists(/databases/$(database)/documents/users/$(nickname)) && 
+              get(/databases/$(database)/documents/users/$(nickname)).data.role == 'admin');
     }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'exp', 'level', 'wisdom', 'clearedWorlds']) &&
+      return data.keys().hasAll(['uid', 'exp', 'level', 'wisdom']) &&
              data.uid is string &&
              data.exp is number &&
              data.level is number &&
-             data.wisdom is number &&
-             data.clearedWorlds is list &&
-             (!('competenceIndex' in data) || data.competenceIndex is number) &&
-             (!('schoolpingCompleted' in data) || data.schoolpingCompleted is bool) &&
-             (!('badges' in data) || data.badges is list) &&
-             (!('stats' in data) || data.stats is map);
+             data.wisdom is number;
     }
 
-    function isValidAttempt(data) {
-      return data.keys().hasAll(['uid', 'scenarioId', 'questId', 'userInput', 'isCorrect', 'timestamp']) &&
-             data.uid == request.auth.uid &&
-             data.scenarioId is string &&
-             data.questId is string &&
-             data.userInput is string &&
-             data.userInput.size() < 2000 &&
-             data.isCorrect is bool;
-    }
-
-    // ===============================================================
     // Rules
-    // ===============================================================
+    // NOTE: In this simple nickname-based login, we allow access based on the nickname.
+    // This is a prototype and should be hardened with real Auth for production.
 
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
-                    (request.resource.data.get('role', 'student') == 'student' || 
-                     (request.auth.token.email == "reuben119@gmail.com" && request.auth.token.email_verified == true && request.resource.data.role == 'admin'));
-      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && 
-                        request.resource.data.get('role', 'student') == resource.data.get('role', 'student')) || 
-                    isAdmin();
+    match /users/{nickname} {
+      allow read: if true;
+      allow write: if isValidUser(request.resource.data) && request.resource.data.uid == nickname;
     }
 
     match /scenarios/{scenarioId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if true; // Allow for prototype, should be restricted to admin
     }
 
     match /attempts/{attemptId} {
-      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && isValidAttempt(request.resource.data);
-      allow update, delete: if isAdmin();
+      allow read, create: if true;
+      allow update, delete: if true;
     }
 
     match /schoolping/{missionId} {
-      allow read: if isAuthenticated();
-      allow create: if isAdmin();
-      allow update: if isAuthenticated() && (isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submissions'])));
+      allow read, write: if true;
     }
 
     match /{path=**} {

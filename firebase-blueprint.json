@@ -2,11 +2,11 @@
   "entities": {
     "User": {
       "title": "User Profile",
-      "description": "Stores student progress and stats",
+      "description": "Stores student progress and stats (identified by nickname)",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "displayName": { "type": "string" },
+        "uid": { "type": "string", "description": "User nickname" },
+        "displayName": { "type": "string", "description": "User nickname" },
         "email": { "type": "string" },
         "exp": { "type": "integer" },
         "level": { "type": "integer" },

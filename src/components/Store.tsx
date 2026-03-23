@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Eye, Hourglass, MessageSquarePlus, Coins, ShoppingCart, Sparkles, Lightbulb } from 'lucide-react';
@@ -104,7 +104,7 @@ export default function Store({ profile }: StoreProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {STORE_ITEMS.map((item) => {
           const Icon = item.icon;
           const canAfford = (profile?.wisdom || 0) >= item.price;
@@ -113,41 +113,50 @@ export default function Store({ profile }: StoreProps) {
           return (
             <motion.div
               key={item.id}
-              whileHover={{ y: -5 }}
-              className={`relative bg-black/40 backdrop-blur-xl border ${item.border} p-6 rounded-2xl overflow-hidden group`}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className={`relative bg-[#0a0a0a]/80 backdrop-blur-2xl border-2 ${item.border} p-8 rounded-[2.5rem] overflow-hidden group shadow-2xl flex flex-col h-full`}
             >
-              <div className={`absolute top-0 right-0 w-32 h-32 ${item.bg} rounded-full blur-3xl -mr-16 -mt-16 transition-opacity group-hover:opacity-100 opacity-50`} />
+              <div className={`absolute top-0 right-0 w-40 h-40 ${item.bg} rounded-full blur-[80px] -mr-20 -mt-20 transition-opacity group-hover:opacity-100 opacity-40`} />
               
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-6">
-                  <div className={`w-14 h-14 ${item.bg} ${item.color} rounded-xl flex items-center justify-center border ${item.border}`}>
-                    <Icon size={28} />
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-8">
+                  <div className={`w-16 h-16 ${item.bg} ${item.color} rounded-2xl flex items-center justify-center border-2 ${item.border} shadow-lg group-hover:scale-110 transition-transform`}>
+                    <Icon size={32} />
                   </div>
-                  <div className="bg-white/5 px-3 py-1 rounded-full border border-white/10 text-xs font-bold text-slate-300">
-                    보유: {ownedCount}개
+                  <div className="bg-white/10 px-4 py-1.5 rounded-full border border-white/10 text-[10px] font-black text-slate-300 uppercase tracking-widest shadow-inner">
+                    보유: {ownedCount}
                   </div>
                 </div>
                 
-                <h3 className="text-2xl font-black text-white mb-2">{item.name}</h3>
-                <p className="text-slate-400 text-sm mb-8 h-10">{item.description}</p>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-black text-white mb-3 tracking-tight">{item.name}</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-8 font-medium">
+                    {item.description}
+                  </p>
+                </div>
                 
                 <button
                   onClick={() => handlePurchase(item.id, item.price)}
                   disabled={!canAfford || purchasing === item.id}
-                  className={`w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                  className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all ${
                     canAfford 
-                      ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.1)]' 
-                      : 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 text-white border border-white/20 hover:border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.1)]' 
+                      : 'bg-slate-900/50 text-slate-600 border border-slate-800/50 cursor-not-allowed'
                   }`}
                 >
                   {purchasing === item.id ? (
-                    <span className="animate-pulse">구매 중...</span>
+                    <span className="animate-pulse">처리 중...</span>
                   ) : purchaseSuccess === item.id ? (
-                    <span className="text-emerald-400">구매 완료!</span>
+                    <span className="text-emerald-400 flex items-center gap-2">
+                      <Sparkles size={16} />
+                      구매 완료
+                    </span>
                   ) : (
                     <>
-                      <ShoppingCart size={18} />
-                      {item.price} WP
+                      <ShoppingCart size={18} className={canAfford ? 'text-cyber-blue' : ''} />
+                      <span className="flex items-baseline gap-1">
+                        {item.price} <span className="text-[8px] opacity-60">WP</span>
+                      </span>
                     </>
                   )}
                 </button>
