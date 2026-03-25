@@ -6,9 +6,9 @@ import { INITIAL_SCENARIOS } from './constants';
 import WorldMap from './components/WorldMap';
 import Chatbot from './components/Chatbot';
 import Dashboard from './components/Dashboard';
-import Schoolping from './components/Schoolping';
+import Missions from './components/Missions';
 import Store from './components/Store';
-import { Layout, Map as MapIcon, BarChart3, Users, LogOut, ShieldCheck, Sparkles, ShoppingCart, User as UserIcon } from 'lucide-react';
+import { Layout, Map as MapIcon, BarChart3, Target, LogOut, ShieldCheck, Sparkles, ShoppingCart, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSound } from './hooks/useSound';
 
@@ -18,7 +18,7 @@ export default function App() {
   const [nickname, setNickname] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'map' | 'chat' | 'dashboard' | 'schoolping' | 'store'>('map');
+  const [view, setView] = useState<'map' | 'chat' | 'dashboard' | 'missions' | 'store'>('map');
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const { playSound } = useSound();
 
@@ -382,7 +382,7 @@ export default function App() {
         <nav className="hidden md:flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/5">
           <NavBtn active={view === 'map'} onClick={() => handleNavClick('map')} icon={<MapIcon size={18}/>} label="월드 맵" />
           <NavBtn active={view === 'dashboard'} onClick={() => handleNavClick('dashboard')} icon={<BarChart3 size={18}/>} label="플레이어 통계" />
-          <NavBtn active={view === 'schoolping'} onClick={() => handleNavClick('schoolping')} icon={<Users size={18}/>} label="길드 미션" />
+          <NavBtn active={view === 'missions'} onClick={() => handleNavClick('missions')} icon={<Target size={18}/>} label="오늘의 미션" />
           <NavBtn active={view === 'store'} onClick={() => handleNavClick('store')} icon={<ShoppingCart size={18}/>} label="전략 상점" />
         </nav>
 
@@ -418,9 +418,9 @@ export default function App() {
               <Dashboard profile={profile} />
             </motion.div>
           )}
-          {view === 'schoolping' && (
-            <motion.div key="schoolping" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
-              <Schoolping profile={profile} />
+          {view === 'missions' && (
+            <motion.div key="missions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+              <Missions profile={profile} />
             </motion.div>
           )}
           {view === 'store' && (
@@ -435,7 +435,7 @@ export default function App() {
       <nav className="md:hidden bg-[#0a0a0a] border-t border-white/5 px-6 py-3 flex items-center justify-around">
         <MobileNavBtn active={view === 'map'} onClick={() => handleNavClick('map')} icon={<MapIcon size={24}/>} />
         <MobileNavBtn active={view === 'dashboard'} onClick={() => handleNavClick('dashboard')} icon={<BarChart3 size={24}/>} />
-        <MobileNavBtn active={view === 'schoolping'} onClick={() => handleNavClick('schoolping')} icon={<Users size={24}/>} />
+        <MobileNavBtn active={view === 'missions'} onClick={() => handleNavClick('missions')} icon={<Target size={24}/>} />
         <MobileNavBtn active={view === 'store'} onClick={() => handleNavClick('store')} icon={<ShoppingCart size={24}/>} />
       </nav>
     </div>

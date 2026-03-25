@@ -52,7 +52,7 @@ service cloud.firestore {
       allow update, delete: if true;
     }
 
-    match /schoolping/{missionId} {
+    match /user_missions/{missionId} {
       allow read, write: if true;
     }
 
