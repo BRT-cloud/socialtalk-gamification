@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
 import { UserProfile, Scenario } from './types';
 import { INITIAL_SCENARIOS } from './constants';
 import WorldMap from './components/WorldMap';
@@ -8,7 +8,9 @@ import Chatbot from './components/Chatbot';
 import Dashboard from './components/Dashboard';
 import Missions from './components/Missions';
 import Store from './components/Store';
-import { Layout, Map as MapIcon, BarChart3, Target, LogOut, ShieldCheck, Sparkles, ShoppingCart, User as UserIcon } from 'lucide-react';
+import AdminPanel from './components/AdminPanel';
+import ErrorBoundary from './components/ErrorBoundary';
+import { Layout, Map as MapIcon, BarChart3, Target, LogOut, ShieldCheck, Sparkles, ShoppingCart, User as UserIcon, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSound } from './hooks/useSound';
 
@@ -18,8 +20,10 @@ export default function App() {
   const [nickname, setNickname] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'map' | 'chat' | 'dashboard' | 'missions' | 'store'>('map');
+  const [view, setView] = useState<'map' | 'chat' | 'dashboard' | 'missions' | 'store' | 'admin'>('map');
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  const [scenarios, setScenarios] = useState<Scenario[]>(INITIAL_SCENARIOS);
+  const [isScenariosLoaded, setIsScenariosLoaded] = useState(false);
   const { playSound } = useSound();
 
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -33,6 +37,9 @@ export default function App() {
     );
 
     const loadTask = async () => {
+      const isAdmin = name === 'admin' || name === 'GM' || name === '관리자접속';
+      const allStageIds = scenarios.map(s => s.id);
+
       const defaultProfile: UserProfile = {
         uid: name,
         displayName: name,
@@ -41,11 +48,11 @@ export default function App() {
         wisdom: 0,
         level: 1,
         badges: [],
-        role: name === 'admin' || name === 'GM' ? 'admin' : 'student',
+        role: isAdmin ? 'admin' : 'student',
         stats: { cognitive: 0, emotional: 0, behavioral: 0 },
         clearedWorlds: [],
-        unlockedStages: ['stage-1'],
-        clearedStages: [],
+        unlockedStages: isAdmin ? allStageIds : ['stage-1'],
+        clearedStages: isAdmin ? allStageIds : [],
         competenceIndex: 0,
         schoolpingCompleted: [],
         inventory: { magnifier: 0, mirror: 0, hourglass: 0, advice: 0 }
@@ -57,18 +64,36 @@ export default function App() {
         
         if (docSnap.exists()) {
           const data = docSnap.data() as UserProfile;
-          setProfile({
-            ...defaultProfile,
-            ...data,
-            inventory: { ...defaultProfile.inventory, ...(data.inventory || {}) }
-          });
+          if (isAdmin) {
+            const updatedData: UserProfile = {
+              ...defaultProfile,
+              ...data,
+              role: 'admin',
+              unlockedStages: allStageIds,
+              clearedStages: allStageIds,
+              inventory: { ...defaultProfile.inventory, ...(data.inventory || {}) }
+            };
+            setProfile(updatedData);
+            // Auto-update DB for admin to ensure all stages are unlocked
+            updateDoc(docRef, {
+              role: 'admin',
+              unlockedStages: allStageIds,
+              clearedStages: allStageIds
+            }).catch(e => console.error("Failed to auto-unlock admin stages", e));
+          } else {
+            setProfile({
+              ...defaultProfile,
+              ...data,
+              inventory: { ...defaultProfile.inventory, ...(data.inventory || {}) }
+            });
+          }
         } else {
           // For new users, we don't wait for setDoc to complete to speed up entry
           setDoc(docRef, defaultProfile).catch(e => console.error("Failed to create new user profile", e));
           setProfile(defaultProfile);
         }
         
-        if (name === 'admin' || name === 'GM') {
+        if (isAdmin) {
           initializeDatabase().catch(e => console.error("Failed to initialize database", e));
         }
         
@@ -85,6 +110,8 @@ export default function App() {
       return await Promise.race([loadTask(), timeoutPromise]);
     } catch (error) {
       console.warn("Profile loading issue (timeout or error), proceeding with default profile for", name);
+      const isAdmin = name === 'admin' || name === 'GM' || name === '관리자접속';
+      const allStageIds = scenarios.map(s => s.id);
       const defaultProfile: UserProfile = {
         uid: name,
         displayName: name,
@@ -93,11 +120,11 @@ export default function App() {
         wisdom: 0,
         level: 1,
         badges: [],
-        role: name === 'admin' || name === 'GM' ? 'admin' : 'student',
+        role: isAdmin ? 'admin' : 'student',
         stats: { cognitive: 0, emotional: 0, behavioral: 0 },
         clearedWorlds: [],
-        unlockedStages: ['stage-1'],
-        clearedStages: [],
+        unlockedStages: isAdmin ? allStageIds : ['stage-1'],
+        clearedStages: isAdmin ? allStageIds : [],
         competenceIndex: 0,
         schoolpingCompleted: [],
         inventory: { magnifier: 0, mirror: 0, hourglass: 0, advice: 0 }
@@ -116,6 +143,23 @@ export default function App() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'scenarios'), (snapshot) => {
+      const fetchedScenarios = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Scenario));
+      fetchedScenarios.sort((a, b) => a.stage - b.stage);
+      
+      // If Firestore is empty, we use INITIAL_SCENARIOS as a preview, 
+      // but we mark it as loaded so we don't keep resetting.
+      if (fetchedScenarios.length === 0 && !isScenariosLoaded) {
+        setScenarios(INITIAL_SCENARIOS);
+      } else {
+        setScenarios(fetchedScenarios);
+      }
+      setIsScenariosLoaded(true);
+    });
+    return unsubscribe;
+  }, [isScenariosLoaded]);
 
   // Listen for profile updates
   useEffect(() => {
@@ -227,20 +271,20 @@ export default function App() {
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full px-6 text-center relative z-10"
+          className="max-w-7xl w-full px-6 text-center relative z-10"
         >
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#00F2FF]/10 border border-[#00F2FF]/20 rounded-full text-[#00F2FF] text-[10px] font-mono font-bold mb-8 uppercase tracking-[0.3em]"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#00F2FF]/10 border border-[#00F2FF]/20 rounded-full text-[#00F2FF] text-xs font-mono font-bold mb-12 uppercase tracking-[0.4em] shadow-[0_0_20px_rgba(0,242,255,0.1)]"
           >
-            <ShieldCheck size={14} />
+            <ShieldCheck size={16} />
             최고의 소셜 어드벤처
           </motion.div>
 
-          <h1 className="text-7xl font-black text-white mb-6 tracking-tighter leading-none">
-            <span className="neon-text-purple">소셜</span><br/>
+          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[10rem] font-black text-white mb-8 tracking-tighter leading-[0.8] whitespace-nowrap overflow-visible flex justify-center items-center gap-2">
+            <span className="neon-text-purple">소셜</span>
             <span className="neon-text-blue">톡</span>
           </h1>
 
@@ -324,8 +368,8 @@ export default function App() {
 
   const handleNextStage = (currentScenarioId: string) => {
     playSound('WHOOSH');
-    const currentIndex = INITIAL_SCENARIOS.findIndex(s => s.id === currentScenarioId);
-    const nextScenario = INITIAL_SCENARIOS[currentIndex + 1];
+    const currentIndex = scenarios.findIndex(s => s.id === currentScenarioId);
+    const nextScenario = scenarios[currentIndex + 1];
     
     if (nextScenario) {
       setSelectedScenario(nextScenario);
@@ -335,7 +379,8 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#050505] overflow-hidden text-slate-200">
+    <ErrorBoundary>
+      <div className="h-screen flex flex-col bg-[#050505] overflow-hidden text-slate-200">
       {/* Header - Game Dashboard Style */}
       <header className="bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 flex items-center justify-between z-10">
         <div className="flex items-center gap-6">
@@ -384,6 +429,9 @@ export default function App() {
           <NavBtn active={view === 'dashboard'} onClick={() => handleNavClick('dashboard')} icon={<BarChart3 size={18}/>} label="플레이어 통계" />
           <NavBtn active={view === 'missions'} onClick={() => handleNavClick('missions')} icon={<Target size={18}/>} label="오늘의 미션" />
           <NavBtn active={view === 'store'} onClick={() => handleNavClick('store')} icon={<ShoppingCart size={18}/>} label="전략 상점" />
+          {profile?.role === 'admin' && (
+            <NavBtn active={view === 'admin'} onClick={() => handleNavClick('admin')} icon={<Settings size={18}/>} label="관리자 설정" />
+          )}
         </nav>
 
         <div className="flex items-center gap-4">
@@ -405,12 +453,12 @@ export default function App() {
         <AnimatePresence mode="wait">
           {view === 'map' && (
             <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-              <WorldMap onSelectScenario={handleSelectScenario} profile={profile} />
+              <WorldMap onSelectScenario={handleSelectScenario} profile={profile} scenarios={scenarios} />
             </motion.div>
           )}
           {view === 'chat' && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
-              <Chatbot scenario={selectedScenario} onBack={() => handleNavClick('map')} onNextStage={handleNextStage} profile={profile} />
+              <Chatbot scenario={selectedScenario} onBack={() => handleNavClick('map')} onNextStage={handleNextStage} profile={profile} scenarios={scenarios} />
             </motion.div>
           )}
           {view === 'dashboard' && (
@@ -428,6 +476,11 @@ export default function App() {
               <Store profile={profile} />
             </motion.div>
           )}
+          {view === 'admin' && (
+            <motion.div key="admin" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto">
+              <AdminPanel profile={profile} scenarios={scenarios} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -437,8 +490,12 @@ export default function App() {
         <MobileNavBtn active={view === 'dashboard'} onClick={() => handleNavClick('dashboard')} icon={<BarChart3 size={24}/>} />
         <MobileNavBtn active={view === 'missions'} onClick={() => handleNavClick('missions')} icon={<Target size={24}/>} />
         <MobileNavBtn active={view === 'store'} onClick={() => handleNavClick('store')} icon={<ShoppingCart size={24}/>} />
+        {profile?.role === 'admin' && (
+          <MobileNavBtn active={view === 'admin'} onClick={() => handleNavClick('admin')} icon={<Settings size={24}/>} />
+        )}
       </nav>
     </div>
+    </ErrorBoundary>
   );
 }
 

@@ -1,29 +1,128 @@
-import React, { useRef } from 'react';
-import { WORLDS, INITIAL_SCENARIOS } from '../constants';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { WORLDS } from '../constants';
 import { UserProfile, Scenario } from '../types';
-import { motion } from 'motion/react';
-import { Lock, Star, Trophy, Map as MapIcon, ChevronRight, Sparkles, Sword, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Lock, Star, Trophy, Map as MapIcon, ChevronRight, Sparkles, Sword, CheckCircle2, Flag, PartyPopper } from 'lucide-react';
 import { useSound } from '../hooks/useSound';
+import confetti from 'canvas-confetti';
 
 interface WorldMapProps {
   onSelectScenario: (scenario: Scenario) => void;
   profile: UserProfile | null;
+  scenarios: Scenario[];
 }
 
-const WORLD_IMAGES: Record<string, string> = {
-  forest: 'https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&q=80&w=1000',
-  sea: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&q=80&w=1000',
-  city: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&q=80&w=1000',
-  castle: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?auto=format&fit=crop&q=80&w=1000',
+const WORLD_COLORS: Record<string, string> = {
+  forest: '#10b981', // Emerald
+  sea: '#00F2FF',    // Cyber Blue
+  city: '#7000FF',   // Cyber Purple
+  castle: '#ef4444', // Red
 };
 
-export default function WorldMap({ onSelectScenario, profile }: WorldMapProps) {
+export default function WorldMap({ onSelectScenario, profile, scenarios }: WorldMapProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { playSound } = useSound();
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [showSectorClear, setShowSectorClear] = useState<string | null>(null);
+  const [transitioningWorld, setTransitioningWorld] = useState<string | null>(null);
 
   const isStageUnlocked = (scenario: Scenario) => {
     if (!profile) return false;
     return profile.unlockedStages?.includes(scenario.id) || scenario.id === 'stage-1';
+  };
+
+  const isStageCleared = (scenarioId: string) => {
+    return profile?.clearedStages?.includes(scenarioId);
+  };
+
+  // Determine current world
+  const currentWorldId = useMemo(() => {
+    if (!profile) return 'forest';
+    
+    // Admin exception: if all stages are unlocked, show all worlds
+    const allStagesCount = scenarios.length;
+    const clearedCount = profile.clearedStages?.length || 0;
+    const unlockedCount = profile.unlockedStages?.length || 0;
+    
+    if (profile.role === 'admin' && (unlockedCount === allStagesCount || clearedCount === allStagesCount)) {
+      return 'all';
+    }
+
+    const firstUncleared = scenarios.find(s => !isStageCleared(s.id));
+    return firstUncleared ? firstUncleared.world : 'castle';
+  }, [profile, scenarios]);
+
+  // Track sector completion and handle transition
+  const [displayWorldId, setDisplayWorldId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    if (scenarios.length > 0) {
+      const allUnlocked = profile.unlockedStages.length >= scenarios.length;
+      if (allUnlocked || currentWorldId === 'all') {
+        setDisplayWorldId('all');
+        return;
+      }
+    }
+
+    const worlds = ['forest', 'sea', 'city', 'castle'];
+    const currentIndex = worlds.indexOf(currentWorldId);
+    
+    // If we just moved to a new world
+    if (displayWorldId && displayWorldId !== 'all' && displayWorldId !== currentWorldId) {
+      const prevWorldId = displayWorldId;
+      const prevWorldScenarios = scenarios.filter(s => s.world === prevWorldId);
+      const allPrevCleared = prevWorldScenarios.every(s => isStageCleared(s.id));
+
+      const hasSeenClear = localStorage.getItem(`sector_clear_${prevWorldId}`);
+      if (allPrevCleared && !hasSeenClear) {
+        // Keep the old world visible during animation
+        triggerSectorClear(prevWorldId, currentWorldId);
+      } else {
+        setDisplayWorldId(currentWorldId);
+      }
+    } else if (!displayWorldId) {
+      setDisplayWorldId(currentWorldId);
+    }
+  }, [profile, scenarios, currentWorldId, displayWorldId]);
+
+  const triggerSectorClear = (clearedWorldId: string, nextWorldId: string) => {
+    const worldName = WORLDS.find(w => w.id === clearedWorldId)?.name || clearedWorldId;
+    setShowSectorClear(worldName);
+    localStorage.setItem(`sector_clear_${clearedWorldId}`, 'true');
+    
+    // Fireworks
+    const duration = 6 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 45, spread: 360, ticks: 100, zIndex: 1000 };
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 100 * (timeLeft / duration);
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      confetti({ ...defaults, particleCount, origin: { x: 0.5, y: 0.5 } });
+    }, 300);
+
+    playSound('CYBER_CLEAR');
+    
+    setTimeout(() => {
+      setShowSectorClear(null);
+      setTransitioningWorld(nextWorldId);
+      // After fade out, switch the world
+      setTimeout(() => {
+        setDisplayWorldId(nextWorldId);
+        setTransitioningWorld(null);
+      }, 800);
+    }, 7000);
   };
 
   const handleScenarioClick = (scenario: Scenario) => {
@@ -31,196 +130,381 @@ export default function WorldMap({ onSelectScenario, profile }: WorldMapProps) {
     onSelectScenario(scenario);
   };
 
+  // Find the current stage (first uncleared)
+  const currentStageId = scenarios.find(s => !isStageCleared(s.id))?.id || scenarios[scenarios.length - 1]?.id;
+
+  // Auto-focus on current stage
+  useEffect(() => {
+    if (scenarios.length > 0 && profile && currentStageId && displayWorldId) {
+      const timer = setTimeout(() => {
+        const targetEl = document.getElementById(currentStageId);
+        if (targetEl && scrollRef.current) {
+          targetEl.scrollIntoView({ 
+            behavior: isFirstLoad ? 'auto' : 'smooth', 
+            inline: 'center', 
+            block: 'nearest' 
+          });
+          if (isFirstLoad) setIsFirstLoad(false);
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStageId, scenarios, profile, isFirstLoad, displayWorldId]);
+
+  // Horizontal scroll with mouse wheel
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      const onWheel = (e: WheelEvent) => {
+        if (e.deltaY === 0) return;
+        e.preventDefault();
+        el.scrollTo({
+          left: el.scrollLeft + e.deltaY * 3,
+          behavior: 'smooth'
+        });
+      };
+      el.addEventListener('wheel', onWheel, { passive: false });
+      return () => el.removeEventListener('wheel', onWheel);
+    }
+  }, []);
+
+  const visibleWorlds = displayWorldId === 'all' ? WORLDS : WORLDS.filter(w => w.id === displayWorldId);
+
   return (
-    <div className="h-full flex flex-col bg-cyber-bg overflow-hidden relative">
-      {/* Background Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+    <div className="h-full flex flex-col bg-[#050505] overflow-hidden relative font-sans">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#00F2FF]/5 to-transparent pointer-events-none" />
       
+      {/* Sector Clear Overlay */}
+      <AnimatePresence>
+        {showSectorClear && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 backdrop-blur-3xl"
+          >
+            <motion.div
+              initial={{ scale: 0.5, y: 100, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              transition={{ type: "spring", damping: 15 }}
+              className="text-center space-y-12"
+            >
+              <div className="relative">
+                <motion.h1 
+                  animate={{ 
+                    textShadow: [
+                      "0 0 20px #00F2FF",
+                      "0 0 60px #00F2FF",
+                      "0 0 100px #7000FF",
+                      "0 0 20px #00F2FF"
+                    ],
+                    scale: [1, 1.02, 1]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="text-9xl md:text-[15rem] font-black text-white italic uppercase tracking-tighter leading-none"
+                >
+                  SECTOR <span className="text-cyber-blue">CLEAR</span>
+                </motion.h1>
+                <div className="absolute -inset-4 bg-cyber-blue/20 blur-[120px] -z-10 animate-pulse" />
+              </div>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="bg-gradient-to-br from-cyber-blue/20 to-cyber-purple/20 border-2 border-cyber-blue/40 p-12 rounded-[3rem] max-w-3xl mx-auto backdrop-blur-xl shadow-[0_0_100px_rgba(0,242,255,0.2)]"
+              >
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <PartyPopper size={64} className="text-cyber-blue mx-auto mb-6" />
+                </motion.div>
+                <h2 className="text-4xl font-black text-white mb-4 italic tracking-tight">MISSION ACCOMPLISHED</h2>
+                <p className="text-2xl text-cyber-blue font-bold leading-relaxed">
+                  당신은 <span className="text-white underline decoration-cyber-purple underline-offset-8">[{showSectorClear}]</span>을 정복하고<br />
+                  <span className="text-white">진정한 소통의 기술</span>을 마스터했습니다!
+                </p>
+              </motion.div>
+              
+              <div className="flex flex-col items-center gap-4">
+                <p className="text-slate-500 font-mono text-sm uppercase tracking-[0.8em] animate-pulse">
+                  INITIALIZING NEXT SECTOR PROTOCOL...
+                </p>
+                <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 6 }}
+                    className="h-full bg-cyber-blue"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
-      <div className="relative z-10 px-8 pt-8 pb-4 flex items-center justify-between">
+      <div className="relative z-10 px-8 pt-8 pb-6 flex items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-md">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-cyber-purple/20 border border-cyber-purple rounded-xl flex items-center justify-center text-cyber-purple shadow-[0_0_15px_rgba(112,0,255,0.3)]">
+          <div className="w-12 h-12 bg-cyber-blue/10 border border-cyber-blue/50 rounded-xl flex items-center justify-center text-cyber-blue shadow-[0_0_20px_rgba(0,242,255,0.2)]">
             <MapIcon size={24} />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-white tracking-tighter neon-text-purple">월드 탐험</h2>
-            <p className="text-[10px] font-bold text-cyber-blue uppercase tracking-[0.2em]">목적지를 선택하세요</p>
+            <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic">
+              Social <span className="text-cyber-blue">Adventure</span> Map
+            </h2>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 rounded-full bg-cyber-blue animate-pulse" />
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                {displayWorldId === 'all' ? '전체 섹터 개방됨' : `${WORLDS.find(w => w.id === displayWorldId)?.name} 탐험 중`}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-6">
-          <div className="cyber-card px-6 py-3 flex items-center gap-4">
-            <div className="w-10 h-10 bg-cyber-blue/10 rounded-lg flex items-center justify-center text-cyber-blue">
-              <Star size={20} fill="currentColor" />
+        <div className="flex gap-4">
+          <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl flex items-center gap-4 backdrop-blur-xl">
+            <div className="w-10 h-10 bg-cyber-purple/20 rounded-lg flex items-center justify-center text-cyber-purple shadow-[0_0_15px_rgba(112,0,255,0.3)]">
+              <Flag size={20} />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">경험치</p>
-              <p className="text-xl font-black text-white leading-none">{profile?.exp}</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">진행도</p>
+              <p className="text-xl font-black text-white leading-none">
+                {profile?.clearedStages?.length || 0} <span className="text-xs text-slate-500">/ 105</span>
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Horizontal World Scroll */}
-      <div 
+      {/* Main Horizontal Scroll Area */}
+      <motion.div 
         ref={scrollRef}
-        className="flex-1 overflow-x-auto overflow-y-hidden flex items-center px-8 gap-8 no-scrollbar"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: transitioningWorld ? 0 : 1 }}
+        transition={{ duration: 0.8 }}
+        className="flex-1 overflow-x-auto overflow-y-hidden flex items-center px-[10vw] gap-12 neon-scrollbar relative z-10"
       >
-        {WORLDS.map((world) => {
-          const worldScenarios = INITIAL_SCENARIOS.filter(s => s.world === world.id).sort((a, b) => a.stage - b.stage);
-          const isCleared = profile?.clearedWorlds.includes(world.id);
+        {visibleWorlds.map((world) => {
+          const worldScenarios = scenarios.filter(s => s.world === world.id).sort((a, b) => a.stage - b.stage);
+          const worldColor = WORLD_COLORS[world.id];
 
           return (
-            <div key={world.id} className="flex-shrink-0 w-[450px] h-[80%] flex flex-col gap-6">
-              {/* World Card */}
-              <motion.div 
-                whileHover={{ scale: 1.02, y: -5 }}
-                className="relative flex-1 rounded-3xl overflow-hidden border-2 border-cyber-blue/30 shadow-[0_0_30px_rgba(0,242,255,0.1)] group"
-              >
-                <img 
-                  src={WORLD_IMAGES[world.id]} 
-                  alt={world.name}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-25"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-                
-                <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                  <div className="bg-black/70 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-2xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-3 h-3 rounded-full ${isCleared ? 'bg-cyber-blue shadow-[0_0_10px_#00F2FF]' : 'bg-slate-500'}`} />
-                      <span className="text-xs font-bold uppercase tracking-widest text-cyber-blue">
-                        {isCleared ? '안전 구역' : '미개척 지역'}
-                      </span>
-                    </div>
-                    <h3 className="text-5xl font-black text-white tracking-tighter mb-4 neon-text-blue uppercase italic drop-shadow-[0_0_10px_rgba(0,242,255,0.5)]">
-                      {world.name}
-                    </h3>
-                    <p className="text-slate-200 text-sm leading-relaxed mb-6 line-clamp-2 font-medium">
-                      {world.desc}
-                    </p>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex -space-x-2">
-                        {[1, 2, 3, 4].map(i => (
-                          <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-cyber-purple/30 backdrop-blur-sm flex items-center justify-center text-[10px] font-bold">
-                            {i}
-                          </div>
-                        ))}
-                        <div className="w-8 h-8 rounded-full border-2 border-black bg-black/50 backdrop-blur-sm flex items-center justify-center text-[10px] font-bold text-slate-400">
-                          +12
+            <div key={world.id} className="flex items-center gap-12">
+              {/* World Divider/Header */}
+              <div className="flex-shrink-0 flex flex-col items-center justify-center gap-6 px-12 border-r border-white/10 h-[70%]">
+                <div 
+                  className="w-24 h-24 rounded-3xl flex items-center justify-center text-white shadow-2xl rotate-45 border-4"
+                  style={{ backgroundColor: `${worldColor}20`, borderColor: worldColor, boxShadow: `0 0 50px ${worldColor}60` }}
+                >
+                  <div className="-rotate-45 font-black text-4xl uppercase italic">{world.name[0]}</div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-4xl font-black text-white tracking-tighter uppercase italic" style={{ color: worldColor }}>{world.name}</h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">{worldScenarios.length} STAGES</p>
+                  <p className="text-[10px] text-slate-600 mt-4 max-w-[200px] leading-relaxed font-medium">{world.desc}</p>
+                </div>
+              </div>
+
+              {/* Stages Row */}
+              <div className="flex items-center gap-16">
+                {worldScenarios.map((scenario) => {
+                  const unlocked = isStageUnlocked(scenario);
+                  const cleared = isStageCleared(scenario.id);
+                  const isCurrent = scenario.id === currentStageId;
+                  
+                  return (
+                    <motion.div
+                      id={scenario.id}
+                      key={scenario.id}
+                      initial={false}
+                      animate={{
+                        scale: isCurrent ? 1.1 : 1,
+                        zIndex: isCurrent ? 20 : 10,
+                      }}
+                      className="relative flex-shrink-0"
+                    >
+                      <button
+                        onClick={() => unlocked && handleScenarioClick(scenario)}
+                        disabled={!unlocked}
+                        className={`
+                          relative w-80 h-[28rem] rounded-[2.5rem] border-4 overflow-hidden transition-all duration-500 group
+                          ${unlocked 
+                            ? cleared
+                              ? 'border-emerald-500/50 opacity-80 grayscale-[0.3]'
+                              : isCurrent
+                                ? 'border-cyber-blue shadow-[0_0_60px_rgba(0,242,255,0.8)]'
+                                : 'border-white/10 hover:border-white/40'
+                            : 'border-white/5 opacity-30 grayscale pointer-events-none'
+                          }
+                          ${isCurrent ? 'ring-[12px] ring-cyber-blue/20' : ''}
+                        `}
+                      >
+                        {/* Background Image */}
+                        <div className="absolute inset-0">
+                          <img 
+                            src={scenario.mediaUrl} 
+                            alt={scenario.title}
+                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent`} />
                         </div>
+
+                        {/* Content Overlay */}
+                        <div className="absolute inset-0 p-8 flex flex-col justify-between z-10">
+                          <div className="flex justify-between items-start">
+                            <div className={`px-4 py-2 rounded-xl text-xs font-black tracking-[0.2em] uppercase bg-black/80 border-2 ${
+                              cleared ? 'border-emerald-500 text-emerald-400' : 'border-white/20 text-white'
+                            }`}>
+                              STAGE {scenario.stage}
+                            </div>
+                            {cleared ? (
+                              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_30px_#10b981]">
+                                <CheckCircle2 size={24} className="text-black" />
+                              </div>
+                            ) : !unlocked ? (
+                              <div className="w-12 h-12 bg-black/60 rounded-full flex items-center justify-center border-2 border-white/10">
+                                <Lock size={24} className="text-slate-500" />
+                              </div>
+                            ) : isCurrent && (
+                              <div className="w-12 h-12 bg-cyber-blue rounded-full flex items-center justify-center shadow-[0_0_40px_#00F2FF] animate-pulse">
+                                <Sparkles size={24} className="text-black" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-4">
+                            {scenario.isBoss && (
+                              <div className="flex items-center gap-2 text-xs font-black text-cyber-purple uppercase tracking-[0.3em] drop-shadow-[0_0_10px_rgba(112,0,255,1)]">
+                                <Sword size={14} /> BOSS BATTLE
+                              </div>
+                            )}
+                            <h4 className="text-3xl font-black text-white leading-none tracking-tighter uppercase italic drop-shadow-2xl">
+                              {scenario.title}
+                            </h4>
+                            
+                            {/* Situation Preview - Always visible but slightly dimmed by default */}
+                            <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed font-medium opacity-70 group-hover:opacity-100 transition-opacity duration-500">
+                              {scenario.situation}
+                            </p>
+
+                            {cleared && (
+                              <p className="text-xs font-black text-emerald-400 uppercase tracking-[0.4em] pt-2">MISSION COMPLETE</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Current Stage Glow Effect - Stronger Neon */}
+                        {isCurrent && (
+                          <div className="absolute inset-0 border-4 border-cyber-blue shadow-[inset_0_0_30px_rgba(0,242,255,0.4)] animate-pulse pointer-events-none" />
+                        )}
+                        
+                        {/* Scanline Effect */}
+                        <div className="scanline" />
+                      </button>
+
+                      {/* Connector Line */}
+                      <div className="absolute top-1/2 -right-16 w-16 h-[4px] bg-white/10 -translate-y-1/2" />
+                    </motion.div>
+                  );
+                })}
+
+                {/* Next Sector Locked Card */}
+                {displayWorldId !== 'all' && displayWorldId !== 'castle' && (
+                  <div className="relative flex-shrink-0 opacity-40">
+                    <div className="w-80 h-[28rem] rounded-[2.5rem] border-4 border-dashed border-white/10 flex flex-col items-center justify-center gap-6 bg-white/5">
+                      <div className="w-20 h-20 bg-black/40 rounded-full flex items-center justify-center border-2 border-white/10">
+                        <Lock size={40} className="text-slate-500" />
                       </div>
-                      <div className="flex items-center gap-2 text-cyber-blue font-bold text-sm">
-                        <span>스테이지 보기</span>
-                        <ChevronRight size={16} />
+                      <div className="text-center">
+                        <p className="text-lg font-black text-white/40 uppercase tracking-[0.3em]">NEXT SECTOR</p>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-2">CLEAR ALL STAGES TO UNLOCK</p>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Scanline Effect */}
-                <div className="scanline" />
-              </motion.div>
-
-              {/* Stage Quick Select */}
-              <div className="h-48 cyber-card p-4 flex gap-4 overflow-x-auto no-scrollbar">
-                {worldScenarios.map((scenario) => {
-                  const unlocked = isStageUnlocked(scenario);
-                  const isCleared = profile?.clearedStages?.includes(scenario.id);
-                  return (
-                    <motion.button
-                      key={scenario.id}
-                      whileHover={unlocked ? { scale: 1.05, y: -2 } : {}}
-                      whileTap={unlocked ? { scale: 0.95 } : {}}
-                      onClick={() => unlocked && handleScenarioClick(scenario)}
-                      className={`relative flex-shrink-0 w-32 h-full rounded-xl border overflow-hidden transition-all ${
-                        unlocked 
-                          ? isCleared
-                            ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                            : scenario.isBoss 
-                              ? 'border-cyber-purple shadow-[0_0_15px_rgba(112,0,255,0.3)]'
-                              : 'border-cyber-blue/30 hover:border-cyber-blue/60 shadow-[0_0_15px_rgba(0,242,255,0.1)]'
-                          : 'border-white/5 opacity-50 grayscale'
-                      }`}
-                    >
-                      {/* Stage Image Background */}
-                      <div className="absolute inset-0 z-0">
-                        <img 
-                          src={scenario.mediaUrl} 
-                          alt={scenario.title}
-                          className="w-full h-full object-cover opacity-20 group-hover:opacity-40 transition-opacity"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className={`absolute inset-0 bg-gradient-to-t ${
-                          isCleared ? 'from-emerald-900/90' : scenario.isBoss ? 'from-cyber-purple/90' : 'from-black/90'
-                        } to-transparent`} />
-                      </div>
-
-                      <div className="relative z-10 flex flex-col items-center justify-center gap-1 h-full p-2 bg-black/70 backdrop-blur-[4px]">
-                        {isCleared && (
-                          <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_15px_#10b981] z-20">
-                            <CheckCircle2 size={12} className="text-black" />
-                          </div>
-                        )}
-                        <div className="flex items-center justify-center mb-1">
-                          {unlocked ? (
-                            scenario.isBoss ? <Sword size={22} className={isCleared ? 'text-emerald-400' : 'text-cyber-purple drop-shadow-[0_0_10px_rgba(112,0,255,0.8)]'} /> : <Sparkles size={20} className={isCleared ? 'text-emerald-400' : 'text-cyber-blue drop-shadow-[0_0_10px_rgba(0,242,255,0.8)]'} />
-                          ) : (
-                            <Lock size={20} className="text-slate-500" />
-                          )}
-                        </div>
-                        <span className="text-3xl font-black tracking-tighter text-white leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{scenario.stage}</span>
-                        <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-1 text-center text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                          {scenario.title}
-                        </span>
-                      </div>
-                    </motion.button>
-                  );
-                })}
+                )}
               </div>
             </div>
           );
         })}
 
-        {/* Coming Soon Card */}
-        <div className="flex-shrink-0 w-[450px] h-[80%] rounded-3xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-4 bg-white/5">
-          <Trophy size={64} className="text-white/10" />
-          <p className="text-xl font-black text-white/20 uppercase tracking-[0.3em]">새로운 영역 준비 중</p>
-        </div>
-      </div>
+        {/* End of Journey */}
+        {displayWorldId === 'castle' || displayWorldId === 'all' ? (
+          <div className="flex-shrink-0 w-80 h-[28rem] rounded-[2.5rem] border-4 border-dashed border-white/10 flex flex-col items-center justify-center gap-6 bg-white/5">
+            <Trophy size={80} className="text-white/10" />
+            <p className="text-lg font-black text-white/20 uppercase tracking-[0.5em]">END OF JOURNEY</p>
+          </div>
+        ) : null}
+      </motion.div>
 
       {/* Footer Progress */}
-      <div className="px-8 py-6 bg-black/40 backdrop-blur-xl border-t border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-8">
+      <div className="px-8 py-6 bg-black/60 backdrop-blur-xl border-t border-white/5 flex items-center justify-between relative z-20">
+        <div className="flex items-center gap-12">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-cyber-blue animate-pulse" />
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">시스템 상태: 온라인</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">SYSTEM STATUS: ONLINE</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">글로벌 진행도</span>
-            <div className="w-48 h-1.5 bg-white/5 rounded-full overflow-hidden">
+          
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">GLOBAL PROGRESS</span>
+            <div className="w-64 h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: '32%' }}
-                className="h-full bg-gradient-to-r from-cyber-purple to-cyber-blue"
+                animate={{ width: `${(profile?.clearedStages?.length || 0) / 105 * 100}%` }}
+                className="h-full bg-gradient-to-r from-cyber-purple to-cyber-blue shadow-[0_0_15px_rgba(0,242,255,0.5)]"
               />
             </div>
-            <span className="text-[10px] font-bold text-cyber-blue">32%</span>
+            <span className="text-xs font-black text-cyber-blue">
+              {Math.round((profile?.clearedStages?.length || 0) / 105 * 100)}%
+            </span>
           </div>
         </div>
-        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          사이버 판타지 OS v2.4.0
+        
+        <div className="flex items-center gap-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          <span>CYBER FANTASY OS v3.0.0</span>
+          <div className="w-[1px] h-4 bg-white/10" />
+          <span className="text-cyber-blue">ST_MAP_LOADED</span>
         </div>
       </div>
 
       <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
+        .neon-scrollbar::-webkit-scrollbar {
+          height: 12px;
         }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        .neon-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 10px;
+          margin: 0 10vw;
+        }
+        .neon-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(to right, #7000FF, #00F2FF);
+          border-radius: 10px;
+          box-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
+          border: 3px solid rgba(0, 0, 0, 0.5);
+        }
+        .neon-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to right, #8000FF, #00FFFF);
+        }
+        
+        .scanline {
+          width: 100%;
+          height: 150px;
+          z-index: 5;
+          background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(0, 242, 255, 0.08) 50%, rgba(0, 0, 0, 0) 100%);
+          opacity: 0.15;
+          position: absolute;
+          bottom: 100%;
+          animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+          0% { bottom: 100%; }
+          100% { bottom: -100%; }
         }
       `}</style>
     </div>

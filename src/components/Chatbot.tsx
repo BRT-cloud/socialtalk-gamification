@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Scenario, UserProfile, Attempt, Quest } from '../types';
-import { INITIAL_SCENARIOS } from '../constants';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,11 +12,12 @@ interface ChatbotProps {
   onBack: () => void;
   onNextStage: (nextScenarioId: string) => void;
   profile: UserProfile | null;
+  scenarios: Scenario[];
 }
 
 type Step = 'visual' | 'quest' | 'result';
 
-export default function Chatbot({ scenario, onBack, onNextStage, profile }: ChatbotProps) {
+export default function Chatbot({ scenario, onBack, onNextStage, profile, scenarios }: ChatbotProps) {
   const [currentStep, setCurrentStep] = useState<Step>('visual');
   const [currentQuestIndex, setCurrentQuestIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -99,8 +99,8 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
       colors: ['#00F2FF', '#7000FF', '#ffffff']
     });
 
-    const currentIndex = INITIAL_SCENARIOS.findIndex(s => s.id === scenario.id);
-    const nextScenario = INITIAL_SCENARIOS[currentIndex + 1];
+    const currentIndex = scenarios.findIndex(s => s.id === scenario.id);
+    const nextScenario = scenarios[currentIndex + 1];
 
     setTimeout(() => {
       setShowSuccessOverlay(false);
@@ -218,8 +218,8 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
           updates.clearedStages = arrayUnion(scenario.id);
           updates.badges = arrayUnion(`competence-${scenario.id}`);
           
-          const currentIndex = INITIAL_SCENARIOS.findIndex(s => s.id === scenario.id);
-          const nextScenario = INITIAL_SCENARIOS[currentIndex + 1];
+          const currentIndex = scenarios.findIndex(s => s.id === scenario.id);
+          const nextScenario = scenarios[currentIndex + 1];
           if (nextScenario) {
             updates.unlockedStages = arrayUnion(nextScenario.id);
           }
@@ -290,8 +290,8 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
     
     setShowSchoolping(false);
     
-    const currentIndex = INITIAL_SCENARIOS.findIndex(s => s.id === scenario.id);
-    const nextScenario = INITIAL_SCENARIOS[currentIndex + 1];
+    const currentIndex = scenarios.findIndex(s => s.id === scenario.id);
+    const nextScenario = scenarios[currentIndex + 1];
     
     if (nextScenario && nextScenario.world !== scenario.world) {
       setShowWorldClearOverlay(true);
@@ -305,8 +305,8 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile }: Chat
     setCurrentStep('result');
   };
 
-  const currentScenarioIndex = INITIAL_SCENARIOS.findIndex(s => s.id === scenario.id);
-  const totalScenarios = INITIAL_SCENARIOS.length;
+  const currentScenarioIndex = scenarios.findIndex(s => s.id === scenario.id);
+  const totalScenarios = scenarios.length;
   const progressPercentage = ((currentScenarioIndex + 1) / totalScenarios) * 100;
 
   return (
