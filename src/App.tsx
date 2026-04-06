@@ -149,17 +149,18 @@ export default function App() {
       const fetchedScenarios = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Scenario));
       fetchedScenarios.sort((a, b) => a.stage - b.stage);
       
-      // If Firestore is empty, we use INITIAL_SCENARIOS as a preview, 
-      // but we mark it as loaded so we don't keep resetting.
-      if (fetchedScenarios.length === 0 && !isScenariosLoaded) {
+      // If Firestore is empty, we use INITIAL_SCENARIOS as a preview.
+      if (fetchedScenarios.length === 0) {
         setScenarios(INITIAL_SCENARIOS);
       } else {
         setScenarios(fetchedScenarios);
       }
       setIsScenariosLoaded(true);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'scenarios');
     });
     return unsubscribe;
-  }, [isScenariosLoaded]);
+  }, []);
 
   // Listen for profile updates
   useEffect(() => {

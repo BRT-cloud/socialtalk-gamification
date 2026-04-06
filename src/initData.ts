@@ -4,11 +4,8 @@ import { INITIAL_SCENARIOS } from './constants';
 
 export async function initializeDatabase() {
   // Initialize Scenarios
-  const scenarioSnap = await getDocs(collection(db, 'scenarios'));
-  if (scenarioSnap.empty) {
-    console.log("Initializing scenarios...");
-    for (const scenario of INITIAL_SCENARIOS) {
-      await setDoc(doc(db, 'scenarios', scenario.id), scenario);
-    }
+  console.log("Syncing scenarios with new 1st-person narratives...");
+  for (const scenario of INITIAL_SCENARIOS) {
+    await setDoc(doc(db, 'scenarios', scenario.id), scenario);
   }
 }

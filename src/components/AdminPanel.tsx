@@ -19,7 +19,10 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
   const [resetConfirm, setResetConfirm] = useState(false);
   const [unlockConfirm, setUnlockConfirm] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [editForm, setEditForm] = useState({ situation: '', question: '', correctAnswer: '' });
+  const [editForm, setEditForm] = useState({ 
+    situation: '', 
+    quests: [] as { question: string; correctAnswer: string }[] 
+  });
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -77,8 +80,10 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
     setEditingId(scenario.id);
     setEditForm({
       situation: scenario.situation,
-      question: scenario.quests[0]?.question || '',
-      correctAnswer: scenario.quests[0]?.correctAnswer || ''
+      quests: scenario.quests.map(q => ({
+        question: q.question,
+        correctAnswer: q.correctAnswer
+      }))
     });
   };
 
@@ -89,14 +94,17 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
       const scenarioSnap = await getDoc(scenarioRef);
       if (scenarioSnap.exists()) {
         const data = scenarioSnap.data() as Scenario;
-        const updatedQuests = [...data.quests];
-        if (updatedQuests.length > 0) {
-          updatedQuests[0] = {
-            ...updatedQuests[0],
-            question: editForm.question,
-            correctAnswer: editForm.correctAnswer
-          };
-        }
+        const updatedQuests = data.quests.map((q, index) => {
+          if (editForm.quests[index]) {
+            return {
+              ...q,
+              question: editForm.quests[index].question,
+              correctAnswer: editForm.quests[index].correctAnswer
+            };
+          }
+          return q;
+        });
+
         await updateDoc(scenarioRef, {
           situation: editForm.situation,
           quests: updatedQuests
@@ -272,8 +280,7 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
                 <th className="p-4 border-b border-red-900/50 w-24 font-bold">ID</th>
                 <th className="p-4 border-b border-red-900/50 w-40 font-bold">제목</th>
                 <th className="p-4 border-b border-red-900/50 min-w-[300px] font-bold">상황 설명 (Situation)</th>
-                <th className="p-4 border-b border-red-900/50 w-64 font-bold">문제 (Quest 1)</th>
-                <th className="p-4 border-b border-red-900/50 w-48 font-bold">정답 (Quest 1)</th>
+                <th className="p-4 border-b border-red-900/50 min-w-[400px] font-bold">문제 및 정답 (Quests)</th>
                 <th className="p-4 border-b border-red-900/50 w-32 font-bold text-center">관리</th>
               </tr>
             </thead>
@@ -289,36 +296,57 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
                         <textarea 
                           value={editForm.situation}
                           onChange={(e) => setEditForm(prev => ({ ...prev, situation: e.target.value }))}
-                          className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 min-h-[80px] focus:outline-none focus:border-red-500"
+                          className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 min-h-[120px] focus:outline-none focus:border-red-500 text-xs"
                         />
                       </td>
                       <td className="p-4 align-top">
-                        <textarea 
-                          value={editForm.question}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, question: e.target.value }))}
-                          className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 min-h-[80px] focus:outline-none focus:border-red-500"
-                        />
-                      </td>
-                      <td className="p-4 align-top">
-                        <input 
-                          type="text"
-                          value={editForm.correctAnswer}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, correctAnswer: e.target.value }))}
-                          className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 focus:outline-none focus:border-red-500"
-                        />
+                        <div className="space-y-4">
+                          {editForm.quests.map((quest, idx) => (
+                            <div key={idx} className="p-3 bg-red-950/30 border border-red-900/30 rounded-lg space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Quest {idx + 1}</span>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-red-400/60 uppercase font-bold">Question</label>
+                                <textarea 
+                                  value={quest.question}
+                                  onChange={(e) => {
+                                    const newQuests = [...editForm.quests];
+                                    newQuests[idx].question = e.target.value;
+                                    setEditForm(prev => ({ ...prev, quests: newQuests }));
+                                  }}
+                                  className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 min-h-[60px] focus:outline-none focus:border-red-500 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-red-400/60 uppercase font-bold">Correct Answer</label>
+                                <input 
+                                  type="text"
+                                  value={quest.correctAnswer}
+                                  onChange={(e) => {
+                                    const newQuests = [...editForm.quests];
+                                    newQuests[idx].correctAnswer = e.target.value;
+                                    setEditForm(prev => ({ ...prev, quests: newQuests }));
+                                  }}
+                                  className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 focus:outline-none focus:border-red-500 text-xs"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </td>
                       <td className="p-4 align-top text-center space-y-2">
                         <button 
                           onClick={() => handleSaveEdit(scenario.id)}
                           disabled={loading}
-                          className="w-full py-1.5 bg-emerald-900/40 hover:bg-emerald-800/80 text-emerald-400 rounded border border-emerald-700/50 flex items-center justify-center gap-1"
+                          className="w-full py-2 bg-emerald-900/40 hover:bg-emerald-800/80 text-emerald-400 rounded border border-emerald-700/50 flex items-center justify-center gap-1 font-bold"
                         >
                           <Save size={14} /> 저장
                         </button>
                         <button 
                           onClick={() => setEditingId(null)}
                           disabled={loading}
-                          className="w-full py-1.5 bg-red-900/40 hover:bg-red-800/80 text-red-400 rounded border border-red-700/50 flex items-center justify-center gap-1"
+                          className="w-full py-2 bg-red-900/40 hover:bg-red-800/80 text-red-400 rounded border border-red-700/50 flex items-center justify-center gap-1 font-bold"
                         >
                           <X size={14} /> 취소
                         </button>
@@ -327,13 +355,22 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
                   ) : (
                     <>
                       <td className="p-4 align-top text-red-200/80 leading-relaxed text-xs">
-                        <div className="max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                           {scenario.situation}
                         </div>
                       </td>
-                      <td className="p-4 align-top text-red-200/60 leading-relaxed">{scenario.quests[0]?.question || 'N/A'}</td>
-                      <td className="p-4 align-top text-red-400/90 italic bg-red-950/20 rounded m-2">
-                        {scenario.quests[0]?.correctAnswer || 'N/A'}
+                      <td className="p-4 align-top">
+                        <div className="max-h-48 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                          {scenario.quests.map((quest, idx) => (
+                            <div key={idx} className="text-xs space-y-1 border-l-2 border-red-900/30 pl-3 py-1">
+                              <div className="text-[10px] font-black text-red-500/60 uppercase tracking-widest">Quest {idx + 1}</div>
+                              <div className="text-red-200/70 font-medium">{quest.question}</div>
+                              <div className="text-red-400/90 italic bg-red-950/20 px-2 py-0.5 rounded inline-block">
+                                {quest.correctAnswer}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </td>
                       <td className="p-4 align-top text-center space-y-2">
                         {deleteConfirmId === scenario.id ? (

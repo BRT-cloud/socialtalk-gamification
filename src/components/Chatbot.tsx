@@ -3,7 +3,7 @@ import { Scenario, UserProfile, Attempt, Quest } from '../types';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Send, Sparkles, Award, Heart, Brain, CheckCircle2, XCircle, Info, Zap, Star, Sword, Terminal, Camera, BookOpen, Search, Eye, Hourglass, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Send, Sparkles, Award, Heart, Brain, CheckCircle2, XCircle, Info, Zap, Star, Sword, Terminal, Camera, BookOpen, Search, Eye, Hourglass, Lightbulb, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useSound } from '../hooks/useSound';
 
@@ -303,6 +303,19 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile, scenar
   const handleWorldClearComplete = () => {
     setShowWorldClearOverlay(false);
     setCurrentStep('result');
+  };
+
+  const handleRetry = () => {
+    playSound('WHOOSH');
+    setIsAnswered(false);
+    setIsCorrect(null);
+    setTimeLeft(60);
+    setInput('');
+    setSelectedOption(null);
+    setShowExplanation(false);
+    setDisabledOptions([]);
+    setShowMirrorHint(false);
+    setShowAdviceHint(false);
   };
 
   const currentScenarioIndex = scenarios.findIndex(s => s.id === scenario.id);
@@ -724,13 +737,13 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile, scenar
                       </button>
                     </motion.div>
                   )}
-                  {isAnswered && !isCorrect && currentQuest.type === 'long-answer' && (
+                  {isAnswered && !isCorrect && (
                      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
                      <button 
-                       onClick={() => { setIsAnswered(false); }}
-                       className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/20 rounded-xl text-lg font-bold transition-all"
+                       onClick={handleRetry}
+                       className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/20 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-2"
                      >
-                       다시 시도하기
+                       <RefreshCw size={18} /> 다시 시도하기
                      </button>
                    </motion.div>
                   )}
