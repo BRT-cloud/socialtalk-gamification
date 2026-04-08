@@ -234,7 +234,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#050505]">
+      <div className="h-[100dvh] w-screen flex items-center justify-center bg-[#050505]">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
@@ -246,7 +246,7 @@ export default function App() {
 
   if (!nickname) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#050505] overflow-hidden relative">
+      <div className="h-[100dvh] w-screen flex flex-col items-center justify-center bg-[#050505] overflow-hidden relative">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div 
@@ -381,7 +381,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="h-screen flex flex-col bg-[#050505] overflow-hidden text-slate-200">
+      <div className="h-[100dvh] flex flex-col bg-[#050505] overflow-hidden text-slate-200">
       {/* Header - Game Dashboard Style */}
       <header className="bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 flex items-center justify-between z-10">
         <div className="flex items-center gap-6">

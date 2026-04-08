@@ -40,7 +40,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center p-8 text-center font-sans">
+        <div className="min-h-[100dvh] bg-[#050505] flex items-center justify-center p-8 text-center font-sans">
           <div className="max-w-md space-y-8 relative">
             <div className="absolute -inset-4 bg-red-600/20 blur-3xl rounded-full" />
             <div className="relative space-y-6">

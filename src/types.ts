@@ -32,9 +32,11 @@ export interface Quest {
   type: 'multiple-choice' | 'short-answer' | 'long-answer';
   question: string;
   options?: string[]; // For multiple-choice
+  optionExplanations?: string[]; // Explanations for each option (why it's right/wrong)
   correctAnswer: string; // Model answer for long-answer, exact answer for others
-  explanation?: string; // Explanation for the answer
+  explanation?: string; // General explanation for the answer
   keywords?: string[]; // Keywords for long-answer self-evaluation
+  hint?: string; // Hint for the Mirror of Wisdom item
 }
 
 export interface Scenario {

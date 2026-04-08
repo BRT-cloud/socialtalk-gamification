@@ -21,7 +21,7 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editForm, setEditForm] = useState({ 
     situation: '', 
-    quests: [] as { question: string; correctAnswer: string }[] 
+    quests: [] as any[] 
   });
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -99,7 +99,11 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
             return {
               ...q,
               question: editForm.quests[index].question,
-              correctAnswer: editForm.quests[index].correctAnswer
+              correctAnswer: editForm.quests[index].correctAnswer,
+              options: editForm.quests[index].options || q.options,
+              optionExplanations: editForm.quests[index].optionExplanations || q.optionExplanations,
+              explanation: editForm.quests[index].explanation || q.explanation,
+              hint: editForm.quests[index].hint || q.hint
             };
           }
           return q;
@@ -302,7 +306,7 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
                       <td className="p-4 align-top">
                         <div className="space-y-4">
                           {editForm.quests.map((quest, idx) => (
-                            <div key={idx} className="p-3 bg-red-950/30 border border-red-900/30 rounded-lg space-y-2">
+                            <div key={idx} className="p-3 bg-red-950/30 border border-red-900/30 rounded-lg space-y-3">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Quest {idx + 1}</span>
                               </div>
@@ -318,6 +322,42 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
                                   className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 min-h-[60px] focus:outline-none focus:border-red-500 text-xs"
                                 />
                               </div>
+                              
+                              {quest.type === 'multiple-choice' && quest.options && (
+                                <div className="space-y-2">
+                                  <label className="text-[10px] text-red-400/60 uppercase font-bold">Options & Explanations</label>
+                                  {quest.options.map((opt, optIdx) => (
+                                    <div key={optIdx} className="space-y-1 pl-2 border-l border-red-900/30">
+                                      <input 
+                                        type="text"
+                                        value={opt}
+                                        placeholder={`Option ${optIdx + 1}`}
+                                        onChange={(e) => {
+                                          const newQuests = [...editForm.quests];
+                                          const newOptions = [...(newQuests[idx].options || [])];
+                                          newOptions[optIdx] = e.target.value;
+                                          newQuests[idx].options = newOptions;
+                                          setEditForm(prev => ({ ...prev, quests: newQuests }));
+                                        }}
+                                        className="w-full bg-black/50 border border-red-900/50 rounded p-1.5 text-red-200 focus:outline-none focus:border-red-500 text-xs"
+                                      />
+                                      <textarea 
+                                        value={quest.optionExplanations?.[optIdx] || ''}
+                                        placeholder={`Explanation for Option ${optIdx + 1}`}
+                                        onChange={(e) => {
+                                          const newQuests = [...editForm.quests];
+                                          const newOptionExplanations = [...(newQuests[idx].optionExplanations || ['', '', '', ''])];
+                                          newOptionExplanations[optIdx] = e.target.value;
+                                          newQuests[idx].optionExplanations = newOptionExplanations;
+                                          setEditForm(prev => ({ ...prev, quests: newQuests }));
+                                        }}
+                                        className="w-full bg-black/50 border border-red-900/50 rounded p-1.5 text-red-200 min-h-[40px] focus:outline-none focus:border-red-500 text-xs"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
                               <div className="space-y-1">
                                 <label className="text-[10px] text-red-400/60 uppercase font-bold">Correct Answer</label>
                                 <input 
@@ -326,6 +366,33 @@ export default function AdminPanel({ profile, scenarios }: AdminPanelProps) {
                                   onChange={(e) => {
                                     const newQuests = [...editForm.quests];
                                     newQuests[idx].correctAnswer = e.target.value;
+                                    setEditForm(prev => ({ ...prev, quests: newQuests }));
+                                  }}
+                                  className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 focus:outline-none focus:border-red-500 text-xs"
+                                />
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-red-400/60 uppercase font-bold">General Explanation</label>
+                                <textarea 
+                                  value={quest.explanation || ''}
+                                  onChange={(e) => {
+                                    const newQuests = [...editForm.quests];
+                                    newQuests[idx].explanation = e.target.value;
+                                    setEditForm(prev => ({ ...prev, quests: newQuests }));
+                                  }}
+                                  className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 min-h-[60px] focus:outline-none focus:border-red-500 text-xs"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-red-400/60 uppercase font-bold">Hint (Mirror Item)</label>
+                                <input 
+                                  type="text"
+                                  value={quest.hint || ''}
+                                  onChange={(e) => {
+                                    const newQuests = [...editForm.quests];
+                                    newQuests[idx].hint = e.target.value;
                                     setEditForm(prev => ({ ...prev, quests: newQuests }));
                                   }}
                                   className="w-full bg-black/50 border border-red-900/50 rounded p-2 text-red-200 focus:outline-none focus:border-red-500 text-xs"

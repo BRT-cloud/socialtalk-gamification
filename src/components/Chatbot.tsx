@@ -443,31 +443,54 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile, scenar
                   
                   {/* Multiple Choice */}
                   {currentQuest.type === 'multiple-choice' && (
-                    <div className="grid grid-cols-1 gap-4">
-                      {currentQuest.options?.map((option, i) => {
-                        const isDisabledByItem = disabledOptions.includes(option);
-                        return (
-                        <button
-                          key={i}
-                          onClick={() => handleOptionSelect(option)}
-                          disabled={isAnswered || isDisabledByItem}
-                          className={`w-full p-6 rounded-xl text-left font-bold text-lg transition-all border-2 flex items-center justify-between group ${
-                            isDisabledByItem ? 'opacity-30 cursor-not-allowed bg-black/40 border-white/5 text-slate-600' :
-                            isAnswered && option === selectedOption
-                              ? isCorrect 
-                                ? 'bg-cyber-blue/20 border-cyber-blue text-cyber-blue shadow-[0_0_15px_rgba(0,242,255,0.2)]' 
-                                : 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
-                              : isAnswered && option === currentQuest.correctAnswer
-                                ? 'bg-cyber-blue/20 border-cyber-blue text-cyber-blue' 
-                                : 'bg-white/5 border-white/10 hover:border-cyber-blue/50 text-slate-400'
-                          }`}
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 gap-4">
+                        {currentQuest.options?.map((option, i) => {
+                          const isDisabledByItem = disabledOptions.includes(option);
+                          const isSelected = isAnswered && option === selectedOption;
+                          const isCorrectOption = isAnswered && option === currentQuest.correctAnswer;
+                          
+                          return (
+                          <button
+                            key={i}
+                            onClick={() => handleOptionSelect(option)}
+                            disabled={isAnswered || isDisabledByItem}
+                            className={`w-full p-6 rounded-xl text-left font-bold text-lg transition-all border-2 flex items-center justify-between group ${
+                              isDisabledByItem ? 'opacity-30 cursor-not-allowed bg-black/40 border-white/5 text-slate-600' :
+                              isSelected
+                                ? isCorrect 
+                                  ? 'bg-cyber-blue/20 border-cyber-blue text-cyber-blue shadow-[0_0_15px_rgba(0,242,255,0.2)]' 
+                                  : 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                                : isCorrectOption
+                                  ? 'bg-cyber-blue/20 border-cyber-blue text-cyber-blue' 
+                                  : 'bg-white/5 border-white/10 hover:border-cyber-blue/50 text-slate-400'
+                            }`}
+                          >
+                            <span className={isDisabledByItem ? 'line-through' : ''}>{option}</span>
+                            {isSelected && (
+                              isCorrect ? <CheckCircle2 size={24} /> : <XCircle size={24} />
+                            )}
+                          </button>
+                        )})}
+                      </div>
+                      
+                      {isAnswered && selectedOption && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }} 
+                          animate={{ opacity: 1, y: 0 }} 
+                          className={`p-6 rounded-xl border ${isCorrect ? 'bg-cyber-blue/10 border-cyber-blue/30' : 'bg-red-500/10 border-red-500/30'}`}
                         >
-                          <span className={isDisabledByItem ? 'line-through' : ''}>{option}</span>
-                          {isAnswered && option === selectedOption && (
-                            isCorrect ? <CheckCircle2 size={24} /> : <XCircle size={24} />
-                          )}
-                        </button>
-                      )})}
+                          <h4 className={`font-bold mb-2 flex items-center gap-2 ${isCorrect ? 'text-cyber-blue' : 'text-red-400'}`}>
+                            {isCorrect ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                            해설
+                          </h4>
+                          <p className="text-slate-300 leading-relaxed">
+                            {currentQuest.optionExplanations ? 
+                              currentQuest.optionExplanations[currentQuest.options!.indexOf(selectedOption)] : 
+                              currentQuest.explanation}
+                          </p>
+                        </motion.div>
+                      )}
                     </div>
                   )}
 
@@ -643,16 +666,12 @@ export default function Chatbot({ scenario, onBack, onNextStage, profile, scenar
                   {/* Hints */}
                   {!isAnswered && (showMirrorHint || showAdviceHint) && (
                     <div className="mt-6 space-y-4">
-                      {showMirrorHint && currentQuest.keywords && (
+                      {showMirrorHint && currentQuest.hint && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-cyber-purple/10 border border-cyber-purple/30 rounded-xl flex items-start gap-3">
                           <Eye className="text-cyber-purple shrink-0 mt-1" size={20} />
                           <div>
-                            <p className="text-sm font-bold text-cyber-purple mb-1">거울의 힌트 (핵심 키워드)</p>
-                            <div className="flex flex-wrap gap-2">
-                              {currentQuest.keywords.map((kw, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-cyber-purple/20 text-cyber-purple rounded-md text-sm font-bold">#{kw}</span>
-                              ))}
-                            </div>
+                            <p className="text-sm font-bold text-cyber-purple mb-1">지혜의 거울 힌트</p>
+                            <p className="text-sm text-cyber-purple/80">{currentQuest.hint}</p>
                           </div>
                         </motion.div>
                       )}

@@ -287,31 +287,31 @@ export default function WorldMap({ onSelectScenario, profile, scenarios }: World
         initial={{ opacity: 0 }}
         animate={{ opacity: transitioningWorld ? 0 : 1 }}
         transition={{ duration: 0.8 }}
-        className="flex-1 overflow-x-auto overflow-y-hidden flex items-center px-[10vw] gap-12 neon-scrollbar relative z-10"
+        className="flex-1 overflow-x-auto overflow-y-auto flex items-start px-[5vw] md:px-[10vw] py-8 gap-8 md:gap-12 neon-scrollbar relative z-10"
       >
         {visibleWorlds.map((world) => {
           const worldScenarios = scenarios.filter(s => s.world === world.id).sort((a, b) => a.stage - b.stage);
           const worldColor = WORLD_COLORS[world.id];
 
           return (
-            <div key={world.id} className="flex items-center gap-12">
+            <div key={world.id} className="flex items-center gap-8 md:gap-12 my-auto">
               {/* World Divider/Header */}
-              <div className="flex-shrink-0 flex flex-col items-center justify-center gap-6 px-12 border-r border-white/10 h-[70%]">
+              <div className="flex-shrink-0 flex flex-col items-center justify-center gap-6 px-8 md:px-12 border-r border-white/10 h-[70%]">
                 <div 
-                  className="w-24 h-24 rounded-3xl flex items-center justify-center text-white shadow-2xl rotate-45 border-4"
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-3xl flex items-center justify-center text-white shadow-2xl rotate-45 border-4"
                   style={{ backgroundColor: `${worldColor}20`, borderColor: worldColor, boxShadow: `0 0 50px ${worldColor}60` }}
                 >
-                  <div className="-rotate-45 font-black text-4xl uppercase italic">{world.name[0]}</div>
+                  <div className="-rotate-45 font-black text-3xl md:text-4xl uppercase italic">{world.name[0]}</div>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-4xl font-black text-white tracking-tighter uppercase italic" style={{ color: worldColor }}>{world.name}</h3>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">{worldScenarios.length} STAGES</p>
-                  <p className="text-[10px] text-slate-600 mt-4 max-w-[200px] leading-relaxed font-medium">{world.desc}</p>
+                  <h3 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase italic" style={{ color: worldColor }}>{world.name}</h3>
+                  <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">{worldScenarios.length} STAGES</p>
+                  <p className="text-[10px] text-slate-600 mt-4 max-w-[150px] md:max-w-[200px] leading-relaxed font-medium">{world.desc}</p>
                 </div>
               </div>
 
               {/* Stages Row */}
-              <div className="flex items-center gap-16">
+              <div className="flex items-center gap-8 md:gap-16">
                 {worldScenarios.map((scenario) => {
                   const unlocked = isStageUnlocked(scenario);
                   const cleared = isStageCleared(scenario.id);
@@ -323,16 +323,16 @@ export default function WorldMap({ onSelectScenario, profile, scenarios }: World
                       key={scenario.id}
                       initial={false}
                       animate={{
-                        scale: isCurrent ? 1.1 : 1,
+                        scale: isCurrent ? 1.05 : 1,
                         zIndex: isCurrent ? 20 : 10,
                       }}
-                      className="relative flex-shrink-0"
+                      className="relative flex-shrink-0 py-4"
                     >
                       <button
                         onClick={() => unlocked && handleScenarioClick(scenario)}
                         disabled={!unlocked}
                         className={`
-                          relative w-80 h-[28rem] rounded-[2.5rem] border-4 overflow-hidden transition-all duration-500 group
+                          relative w-[75vw] sm:w-72 md:w-80 h-[55vh] min-h-[320px] max-h-[448px] rounded-[2rem] md:rounded-[2.5rem] border-4 overflow-hidden transition-all duration-500 group
                           ${unlocked 
                             ? cleared
                               ? 'border-emerald-500/50 opacity-80 grayscale-[0.3]'
@@ -341,7 +341,7 @@ export default function WorldMap({ onSelectScenario, profile, scenarios }: World
                                 : 'border-white/10 hover:border-white/40'
                             : 'border-white/5 opacity-30 grayscale pointer-events-none'
                           }
-                          ${isCurrent ? 'ring-[12px] ring-cyber-blue/20' : ''}
+                          ${isCurrent ? 'ring-[8px] md:ring-[12px] ring-cyber-blue/20' : ''}
                         `}
                       >
                         {/* Background Image */}
@@ -356,45 +356,45 @@ export default function WorldMap({ onSelectScenario, profile, scenarios }: World
                         </div>
 
                         {/* Content Overlay */}
-                        <div className="absolute inset-0 p-8 flex flex-col justify-between z-10">
+                        <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-between z-10">
                           <div className="flex justify-between items-start">
-                            <div className={`px-4 py-2 rounded-xl text-xs font-black tracking-[0.2em] uppercase bg-black/80 border-2 ${
+                            <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[10px] md:text-xs font-black tracking-[0.2em] uppercase bg-black/80 border-2 ${
                               cleared ? 'border-emerald-500 text-emerald-400' : 'border-white/20 text-white'
                             }`}>
                               STAGE {scenario.stage}
                             </div>
                             {cleared ? (
-                              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_30px_#10b981]">
-                                <CheckCircle2 size={24} className="text-black" />
+                              <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_30px_#10b981]">
+                                <CheckCircle2 size={20} className="text-black" />
                               </div>
                             ) : !unlocked ? (
-                              <div className="w-12 h-12 bg-black/60 rounded-full flex items-center justify-center border-2 border-white/10">
-                                <Lock size={24} className="text-slate-500" />
+                              <div className="w-10 h-10 md:w-12 md:h-12 bg-black/60 rounded-full flex items-center justify-center border-2 border-white/10">
+                                <Lock size={20} className="text-slate-500" />
                               </div>
                             ) : isCurrent && (
-                              <div className="w-12 h-12 bg-cyber-blue rounded-full flex items-center justify-center shadow-[0_0_40px_#00F2FF] animate-pulse">
-                                <Sparkles size={24} className="text-black" />
+                              <div className="w-10 h-10 md:w-12 md:h-12 bg-cyber-blue rounded-full flex items-center justify-center shadow-[0_0_40px_#00F2FF] animate-pulse">
+                                <Sparkles size={20} className="text-black" />
                               </div>
                             )}
                           </div>
 
-                          <div className="space-y-4">
+                          <div className="space-y-3 md:space-y-4">
                             {scenario.isBoss && (
-                              <div className="flex items-center gap-2 text-xs font-black text-cyber-purple uppercase tracking-[0.3em] drop-shadow-[0_0_10px_rgba(112,0,255,1)]">
+                              <div className="flex items-center gap-2 text-[10px] md:text-xs font-black text-cyber-purple uppercase tracking-[0.3em] drop-shadow-[0_0_10px_rgba(112,0,255,1)]">
                                 <Sword size={14} /> BOSS BATTLE
                               </div>
                             )}
-                            <h4 className="text-3xl font-black text-white leading-none tracking-tighter uppercase italic drop-shadow-2xl">
+                            <h4 className="text-2xl md:text-3xl font-black text-white leading-none tracking-tighter uppercase italic drop-shadow-2xl">
                               {scenario.title}
                             </h4>
                             
                             {/* Situation Preview - Always visible but slightly dimmed by default */}
-                            <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed font-medium opacity-70 group-hover:opacity-100 transition-opacity duration-500">
+                            <p className="text-xs md:text-sm text-slate-300 line-clamp-3 leading-relaxed font-medium opacity-70 group-hover:opacity-100 transition-opacity duration-500">
                               {scenario.situation}
                             </p>
 
                             {cleared && (
-                              <p className="text-xs font-black text-emerald-400 uppercase tracking-[0.4em] pt-2">MISSION COMPLETE</p>
+                              <p className="text-[10px] md:text-xs font-black text-emerald-400 uppercase tracking-[0.4em] pt-2">MISSION COMPLETE</p>
                             )}
                           </div>
                         </div>
@@ -409,21 +409,21 @@ export default function WorldMap({ onSelectScenario, profile, scenarios }: World
                       </button>
 
                       {/* Connector Line */}
-                      <div className="absolute top-1/2 -right-16 w-16 h-[4px] bg-white/10 -translate-y-1/2" />
+                      <div className="absolute top-1/2 -right-8 md:-right-16 w-8 md:w-16 h-[4px] bg-white/10 -translate-y-1/2" />
                     </motion.div>
                   );
                 })}
 
                 {/* Next Sector Locked Card */}
                 {displayWorldId !== 'all' && displayWorldId !== 'castle' && (
-                  <div className="relative flex-shrink-0 opacity-40">
-                    <div className="w-80 h-[28rem] rounded-[2.5rem] border-4 border-dashed border-white/10 flex flex-col items-center justify-center gap-6 bg-white/5">
-                      <div className="w-20 h-20 bg-black/40 rounded-full flex items-center justify-center border-2 border-white/10">
-                        <Lock size={40} className="text-slate-500" />
+                  <div className="relative flex-shrink-0 opacity-40 py-4">
+                    <div className="w-[75vw] sm:w-72 md:w-80 h-[55vh] min-h-[320px] max-h-[448px] rounded-[2rem] md:rounded-[2.5rem] border-4 border-dashed border-white/10 flex flex-col items-center justify-center gap-6 bg-white/5">
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-black/40 rounded-full flex items-center justify-center border-2 border-white/10">
+                        <Lock size={32} className="text-slate-500" />
                       </div>
                       <div className="text-center">
-                        <p className="text-lg font-black text-white/40 uppercase tracking-[0.3em]">NEXT SECTOR</p>
-                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-2">CLEAR ALL STAGES TO UNLOCK</p>
+                        <p className="text-base md:text-lg font-black text-white/40 uppercase tracking-[0.3em]">NEXT SECTOR</p>
+                        <p className="text-[8px] md:text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-2">CLEAR ALL STAGES TO UNLOCK</p>
                       </div>
                     </div>
                   </div>
@@ -435,9 +435,9 @@ export default function WorldMap({ onSelectScenario, profile, scenarios }: World
 
         {/* End of Journey */}
         {displayWorldId === 'castle' || displayWorldId === 'all' ? (
-          <div className="flex-shrink-0 w-80 h-[28rem] rounded-[2.5rem] border-4 border-dashed border-white/10 flex flex-col items-center justify-center gap-6 bg-white/5">
-            <Trophy size={80} className="text-white/10" />
-            <p className="text-lg font-black text-white/20 uppercase tracking-[0.5em]">END OF JOURNEY</p>
+          <div className="flex-shrink-0 w-[75vw] sm:w-72 md:w-80 h-[55vh] min-h-[320px] max-h-[448px] rounded-[2rem] md:rounded-[2.5rem] border-4 border-dashed border-white/10 flex flex-col items-center justify-center gap-6 bg-white/5 my-auto">
+            <Trophy size={64} className="text-white/10 md:w-20 md:h-20" />
+            <p className="text-base md:text-lg font-black text-white/20 uppercase tracking-[0.5em]">END OF JOURNEY</p>
           </div>
         ) : null}
       </motion.div>
