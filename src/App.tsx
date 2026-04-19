@@ -10,6 +10,7 @@ import Missions from './components/Missions';
 import Store from './components/Store';
 import AdminPanel from './components/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { Layout, Map as MapIcon, BarChart3, Target, LogOut, ShieldCheck, Sparkles, ShoppingCart, User as UserIcon, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSound } from './hooks/useSound';
@@ -191,7 +192,7 @@ export default function App() {
     // Forced entry timeout: if loading takes more than 2 seconds, force entry
     const forcedEntryTimeout = setTimeout(() => {
       if (isSigningInRef.current) {
-        console.warn("Forced entry triggered due to timeout");
+        // console.warn("Forced entry triggered due to timeout");
         localStorage.setItem('socialtalk_nickname', loginNickname);
         setNickname(loginNickname);
         setIsSigningIn(false);
@@ -495,6 +496,7 @@ export default function App() {
           <MobileNavBtn active={view === 'admin'} onClick={() => handleNavClick('admin')} icon={<Settings size={24}/>} />
         )}
       </nav>
+      <PWAInstallPrompt />
     </div>
     </ErrorBoundary>
   );
