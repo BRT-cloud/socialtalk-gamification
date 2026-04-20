@@ -85,6 +85,8 @@ export default function App() {
             setProfile({
               ...defaultProfile,
               ...data,
+              unlockedStages: data.unlockedStages || defaultProfile.unlockedStages,
+              clearedStages: data.clearedStages || defaultProfile.clearedStages,
               inventory: { ...defaultProfile.inventory, ...(data.inventory || {}) }
             });
           }
@@ -148,14 +150,18 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'scenarios'), (snapshot) => {
       const fetchedScenarios = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Scenario));
-      fetchedScenarios.sort((a, b) => a.stage - b.stage);
+      fetchedScenarios.sort((a, b) => (Number(a.stage) || 0) - (Number(b.stage) || 0));
       
-      // If Firestore is empty, we use INITIAL_SCENARIOS as a preview.
-      if (fetchedScenarios.length === 0) {
-        setScenarios(INITIAL_SCENARIOS);
-      } else {
-        setScenarios(fetchedScenarios);
-      }
+      const merged = [...fetchedScenarios];
+      // Always merge INITIAL_SCENARIOS so missing static ones are guaranteed to be present!
+      INITIAL_SCENARIOS.forEach(initScen => {
+        if (!merged.find(s => s.id === initScen.id)) {
+          merged.push(initScen);
+        }
+      });
+      merged.sort((a, b) => (Number(a.stage) || 0) - (Number(b.stage) || 0));
+      
+      setScenarios(merged);
       setIsScenariosLoaded(true);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'scenarios');
@@ -166,14 +172,27 @@ export default function App() {
   // Listen for profile updates
   useEffect(() => {
     if (nickname) {
-      const unsubscribe = onSnapshot(doc(db, 'users', nickname), (doc) => {
-        if (doc.exists()) {
-          setProfile(doc.data() as UserProfile);
+      const unsubscribe = onSnapshot(doc(db, 'users', nickname), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as UserProfile;
+          const isAdmin = data.role === 'admin';
+          const allStageIds = scenarios.map(s => s.id);
+          
+          setProfile(prev => {
+            if (!prev) return data;
+            return {
+              ...prev,
+              ...data,
+              unlockedStages: data.unlockedStages || prev.unlockedStages,
+              clearedStages: data.clearedStages || prev.clearedStages,
+              inventory: { ...prev.inventory, ...(data.inventory || {}) }
+            };
+          });
         }
       });
       return unsubscribe;
     }
-  }, [nickname]);
+  }, [nickname, scenarios]);
 
   const isSigningInRef = useRef(false);
 
